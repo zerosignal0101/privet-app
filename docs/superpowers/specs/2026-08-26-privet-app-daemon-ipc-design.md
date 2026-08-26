@@ -189,8 +189,8 @@ Required so the client can open sent/received files and forward/edit. The file d
 
 Returns the transfer summary plus per-file records with a daemon-computed absolute path:
 - receive: `save_dir / root_name / relative_path`
-- send: absolute path parsed from `send_intent`
-- per file: `{relative_path, absolute_path, size, is_dir, status}`
+- send: `source_path` — the absolute source path **persisted per file** (schema migration v2 adds `transfer_files.source_path`). Required because `relative_path` is not globally unique across roots in a multi-root send.
+- per file: `{relative_path, absolute_path, size, status}`. `is_dir` is not stored (the daemon records files only); directories are derived client-side from `relative_path` components.
 
 ### 7.2 `delete_history { transfer_id }`
 
@@ -266,5 +266,5 @@ privet-app/
 - **Daemon-side IPC additions** — must be coordinated with the daemon repo (`get_history_detail`, `delete_history`); the app repo will be blocked on them for History parity.
 - **Windows named-pipe transport via `win32`** — direct, but needs a Windows integration test early.
 - **Dart `Process.start` of an extracted native binary on Android** — expected to work in the app files dir; verify in the first Android spike.
-- **`send_intent` parsing for send-side history detail** — must confirm the stored intent JSON shape before implementing `get_history_detail`.
+- **Send-side history detail** — resolved by persisting `transfer_files.source_path` (schema migration v2) at send completion; `relative_path` alone is ambiguous across multi-root sends. Old send records have NULL `source_path` → the client shows "File not accessible".
 - IPC version policy (v1 additive vs v2) is a daemon-repo decision.
