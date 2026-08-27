@@ -64,3 +64,48 @@ Future<TestDaemon> bootTestDaemon(
   ]);
   return TestDaemon(container, transport, service);
 }
+
+// ---- wire-message builders (shared by provider tests) ----------------------
+
+Map<String, dynamic> serverMessage(String type, Map<String, dynamic> body) =>
+    {'type': type, ...body};
+
+Map<String, dynamic> okPayload(String kind, Object? data) =>
+    {'kind': kind, 'data': data};
+
+Map<String, dynamic> okResponse(String id, String kind, Object? data) =>
+    serverMessage('response', {'request_id': id, 'payload': okPayload(kind, data)});
+
+Map<String, dynamic> statusResponse(String id) => okResponse(id, 'status', {
+      'protocol_version': 1,
+      'daemon_version': '0.1.0',
+      'session_id': 'sess-A',
+      'device_fingerprint': 'fp',
+      'quic_addr': 'q',
+      'tcp_addr': 't',
+      'active_transfers': <String>[],
+    });
+
+/// Builds a script from a per-method handler map; the connection handshake
+/// (get_status + subscribe_events) is answered automatically. Handlers receive
+/// the request id and params, and return one server message.
+List<Map<String, dynamic>> Function(List<Map<String, dynamic>>) scriptFromHandlers(
+    Map<String, Map<String, dynamic> Function(String id, Map<String, dynamic> params)>
+        handlers) {
+  return (requests) => requests.map((req) {
+        final id = req['request_id'] as String;
+        final request = req['request'] as Map<String, dynamic>;
+        final method = request['method'] as String;
+        final params = (request['params'] as Map<String, dynamic>?) ?? const {};
+        switch (method) {
+          case 'get_status':
+            return statusResponse(id);
+          case 'subscribe_events':
+            return okResponse(id, 'event_replay',
+                {'events': <dynamic>[], 'oldest_available': null, 'latest': 0});
+        }
+        final h = handlers[method];
+        if (h == null) throw StateError('unexpected method: $method');
+        return h(id, params);
+      }).toList();
+}
