@@ -17,6 +17,9 @@ class MainActivity : FlutterActivity() {
         // Byte bridge to the on-device privetd unix socket.
         PrivetIpcChannel().register(messenger)
 
+        // Starts/stops the in-process daemon thread (Dart's spawner).
+        PrivetDaemonChannel().register(messenger)
+
         // SAF content-URI operations for send/receive paths (directory picker
         // results are forwarded via onActivityResult below).
         fileChannel = PrivetFileChannel(this)

@@ -12,10 +12,13 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import java.io.File
 
 /**
- * Pins the app process so the on-device privetd child survives UI backgrounding
- * (Android kills a process and its children together once the UI is dead).
+ * Pins the app process so the on-device privetd (a thread in this process)
+ * survives UI backgrounding. A START_STICKY restart brings the daemon thread
+ * back up in [onCreate] without needing the UI, using the same config the Dart
+ * side writes.
  *
  * Also holds a [WifiManager.MulticastLock] so mDNS responses aren't filtered by
  * the Wi-Fi driver while the daemon runs — the UDP broadcast beacon works
@@ -37,6 +40,15 @@ class PrivetDaemonService : Service() {
         } catch (e: Exception) {
             Log.w("PrivetService", "multicast lock unavailable", e)
         }
+        startDaemon()
+    }
+
+    private fun startDaemon() {
+        val privetDir = File(filesDir, "privet")
+        val socketPath = File(privetDir, "privet.sock").path
+        val configPath = File(privetDir, "config.json").path
+        PrivetDaemon.ensureConfig(this, configPath, socketPath)
+        PrivetDaemon.start(configPath, socketPath)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
