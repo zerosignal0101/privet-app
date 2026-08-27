@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../services/android/android_supervisor.dart';
 import '../services/daemon_supervisor.dart';
 import '../services/ipc/dto.dart';
 import '../services/privet_service.dart';
@@ -63,7 +64,12 @@ class DaemonStateNotifier extends Notifier<DaemonSnapshot> {
   Future<void> start() async {
     state = DaemonSnapshot(kind: DaemonStateKind.starting);
     try {
-      final service = await ref.read(daemonSupervisorProvider).ensureRunning();
+      // On Android the daemon is a bundled ELF extracted + spawned in the app
+      // sandbox; everywhere else we attach-or-spawn an adjacent/dev privetd.
+      final supervisor = Platform.isAndroid
+          ? await androidSupervisor()
+          : ref.read(daemonSupervisorProvider);
+      final service = await supervisor.ensureRunning();
       state = DaemonSnapshot(kind: DaemonStateKind.running, service: service);
     } catch (e) {
       state = DaemonSnapshot(kind: DaemonStateKind.error, error: e.toString());
