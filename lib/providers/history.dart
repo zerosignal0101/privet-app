@@ -27,13 +27,19 @@ class HistoryNotifier extends Notifier<List<HistoryEntryDto>> {
       });
     }
     ref.onDispose(() => _sub?.cancel());
+    // Load the current list once (and whenever the daemon comes up).
+    Future.microtask(refresh);
     return const [];
   }
 
   Future<void> refresh() async {
     final service = ref.read(daemonStateProvider).service;
     if (service == null) return;
-    state = await service.history(limit: 100);
+    try {
+      state = await service.history(limit: 100);
+    } catch (_) {
+      // Daemon unreachable — keep the last known list.
+    }
   }
 
   Future<HistoryDetailDto> detail(String transferId) async {

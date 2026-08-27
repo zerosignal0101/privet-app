@@ -47,6 +47,11 @@ class SettingsNotifier extends Notifier<Settings> {
   @override
   Settings build() {
     _loadPrefs();
+    final service = ref.watch(daemonStateProvider).service;
+    if (service != null) {
+      // Merge the daemon's live runtime config once it is up.
+      service.runtimeConfig().then(loadFromDaemon).catchError((_) {});
+    }
     return const Settings();
   }
 
