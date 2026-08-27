@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Cross-compiles privetd for Android ABIs and stages the ELF binaries under
-# assets/bin/<abi>/ so the Flutter app can bundle and spawn them.
+# Cross-compiles privetd for Android ABIs and stages the embeddable cdylib
+# under android/app/src/main/jniLibs/<abi>/ so the APK ships it as a native
+# library. On Android >= 10 an app cannot execve a bundled ELF extracted into
+# its own data dir (SELinux W^X on untrusted_app since targetSdk 29), so the
+# app dlopens libprivetd_embed.so and runs the daemon on a thread.
 #
 # Usage:
 #   ABI=arm64-v8a bash tool/build_privetd.sh   # single ABI (spike)
@@ -12,13 +15,10 @@ set -euo pipefail
 #   - an Android NDK (ANDROID_NDK_HOME set, or discovered under the SDK)
 #   - rustup targets: aarch64-linux-android, armv7-linux-androideabi,
 #     x86_64-linux-android
-#
-# The daemon is exec'd (not dlopen'd), so the staged artifact must be a plain
-# executable ELF with the exec bit set — it is NOT a libprivetd.so.
 
 PRIVET_REPO="${PRIVET_REPO:-D:/C-Codes/privet}"
 APP_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="$APP_ROOT/assets/bin"
+OUT="$APP_ROOT/android/app/src/main/jniLibs"
 ABI="${ABI:-arm64-v8a armeabi-v7a x86_64}"
 # Minimum Android API level. Must be >= 24: `getifaddrs` (used by the if-addrs
 # crate for interface enumeration) is only in libc from API 24. cargo-ndk
@@ -53,13 +53,9 @@ for abi in $ABI; do
   esac
   mkdir -p "$OUT/$abi"
   echo "=== building privetd for $abi ($triple) ==="
-  # cargo-ndk 4.x only stages cdylib/staticlib artifacts (it errors "No usable
-  # artifacts" for a bin target), so build without -o and copy the executable
-  # out of the cargo target dir ourselves.
-  cargo ndk -P "$MIN_SDK" -t "$abi" build -p privet-daemon --bin privetd --release
-  cp "target/$triple/release/privetd" "$OUT/$abi/privetd"
-  chmod +x "$OUT/$abi/privetd"
-  file "$OUT/$abi/privetd" || true
+  cargo ndk -P "$MIN_SDK" -t "$abi" build -p privet-daemon --lib --release
+  cp "target/$triple/release/libprivetd_embed.so" "$OUT/$abi/libprivetd_embed.so"
+  file "$OUT/$abi/libprivetd_embed.so" || true
 done
 echo "staged:"
-ls -la "$OUT"/*/privetd
+ls -la "$OUT"/*/libprivetd_embed.so
