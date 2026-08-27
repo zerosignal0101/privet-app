@@ -16,24 +16,6 @@ void main() {
     return tmp;
   }
 
-  test('extract copies the bundled binary and marks it executable', () async {
-    final tmp = await tempDir();
-    final bundle = AndroidDaemonBundle(
-      appFilesDir: tmp.path,
-      externalFilesDir: '${tmp.path}/ext',
-      abi: 'arm64-v8a',
-    );
-    final bin = await bundle.extract();
-    expect(File(bin).existsSync(), isTrue);
-    final parts = bin.split(RegExp(r'[\\/]'));
-    expect(parts.last, 'privetd');
-    expect(parts, contains('bin'));
-    // Exec bits are real only on POSIX hosts; Windows has no mode bits.
-    if (!Platform.isWindows) {
-      expect(File(bin).statSync().mode & 0x111, isNot(0));
-    }
-  });
-
   test('writeConfig emits strict daemon JSON with real ports', () async {
     final tmp = await tempDir();
     final bundle = AndroidDaemonBundle(

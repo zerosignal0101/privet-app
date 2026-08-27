@@ -67,6 +67,43 @@ void main() {
     await expectLater(supervisor.ensureRunning(), throwsStateError);
   });
 
+  test('in-process spawner (null Process) polls until connect succeeds', () async {
+    var attempts = 0;
+    final supervisor = DaemonSupervisor(
+      endpoint: 'test-endpoint',
+      spawner: () async => null,
+      attach: () async {
+        attempts++;
+        if (attempts < 3) throw StateError('not up yet');
+        return _fakeService();
+      },
+    );
+    final service = await supervisor.ensureRunning();
+    expect(service, isA<PrivetService>());
+    expect(attempts, greaterThanOrEqualTo(3));
+  });
+
+  test('in-process spawner with no daemon gives up', () async {
+    final supervisor = DaemonSupervisor(
+      endpoint: 'x',
+      spawner: () async => null,
+      attach: () async => throw StateError('never'),
+      connectAttempts: 3,
+    );
+    await expectLater(supervisor.ensureRunning(), throwsStateError);
+  });
+
+  test('stop calls the stopHandler when there is no process', () async {
+    var stopped = false;
+    final supervisor = DaemonSupervisor(
+      endpoint: 'x',
+      spawner: () async => null,
+      stopHandler: () async => stopped = true,
+    );
+    await supervisor.stop();
+    expect(stopped, isTrue);
+  });
+
   test('resolvePosixEndpoint mirrors the daemon default (POSIX)', () {
     if (Platform.isWindows) return; // POSIX-only
     const xdg = '/tmp/user-runtime';
