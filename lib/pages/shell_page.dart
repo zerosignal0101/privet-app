@@ -1,15 +1,22 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../providers/peers.dart';
+import '../providers/pending_share.dart';
+import '../providers/send_preparation.dart';
+import '../services/clipboard_service.dart';
 import '../services/deeplink_service.dart';
 import '../services/pairing_url.dart';
 import '../services/privet_service.dart';
+import '../services/share_service.dart';
 import '../state/daemon_state.dart';
 import 'history_page.dart';
 import 'home_page.dart';
+import 'send_preparation_page.dart';
 import 'settings_page.dart';
 
 final shellTabProvider =
@@ -33,6 +40,8 @@ class ShellPage extends ConsumerStatefulWidget {
 
 class _ShellPageState extends ConsumerState<ShellPage> {
   StreamSubscription<ParsedPairingUrl>? _deeplinkSub;
+  StreamSubscription<PendingShareData>? _shareSub;
+  ShareService? _shareService;
 
   @override
   void initState() {
@@ -43,12 +52,61 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       _deeplinkSub = service.pairingUrls.listen(_handlePairingUrl);
       service.start();
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final share = ShareService();
+      _shareService = share;
+      _shareSub = share.shares.listen(_handleShareData);
+      share.start();
+    });
   }
 
   @override
   void dispose() {
     _deeplinkSub?.cancel();
+    _shareSub?.cancel();
+    _shareService?.dispose();
     super.dispose();
+  }
+
+  /// Turns an incoming share into the send preparation page. File paths are
+  /// already cached by the native side; shared text is written to a temp file.
+  Future<void> _handleShareData(PendingShareData data) async {
+    final entries = <SendFileEntry>[];
+    for (final path in data.paths) {
+      final file = File(path);
+      if (file.existsSync()) {
+        entries.add(SendFileEntry(
+          path: path,
+          relativePath: path.split(RegExp(r'[/\\]')).last,
+          size: file.lengthSync(),
+        ));
+      }
+    }
+    final text = data.text;
+    if (text != null && text.trim().isNotEmpty) {
+      try {
+        final dir = (await getTemporaryDirectory()).path;
+        final name = ClipboardService.textFilename(text);
+        final (path: txtPath, relativePath: relPath) =
+            ClipboardService.uniqueFile(dir, '$name.txt');
+        await File(txtPath).writeAsString(text);
+        entries.add(SendFileEntry(
+          path: txtPath,
+          relativePath: relPath,
+          size: File(txtPath).lengthSync(),
+        ));
+      } catch (e) {
+        debugPrint('[share] failed to save shared text: $e');
+      }
+    }
+    if (entries.isEmpty || !mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SendPreparationPage(initialEntries: entries),
+      ),
+    );
   }
 
   @override

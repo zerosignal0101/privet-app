@@ -8,6 +8,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private lateinit var fileChannel: PrivetFileChannel
+    private lateinit var shareChannel: PrivetShareChannel
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -20,6 +21,14 @@ class MainActivity : FlutterActivity() {
         // results are forwarded via onActivityResult below).
         fileChannel = PrivetFileChannel(this)
         fileChannel.register(messenger)
+
+        // ACTION_SEND payloads. A cold-start share intent is processed after
+        // registration so the stashed args survive until Dart pulls them.
+        shareChannel = PrivetShareChannel(this)
+        shareChannel.register(messenger)
+        if (intent.action?.startsWith("android.intent.action.SEND") == true) {
+            shareChannel.handleShareIntent(intent)
+        }
 
         // Small platform queries the Dart side needs (CPU ABI for the daemon bundle).
         MethodChannel(messenger, "privet/platform").setMethodCallHandler { call, result ->
@@ -53,6 +62,19 @@ class MainActivity : FlutterActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (::fileChannel.isInitialized) {
             fileChannel.onActivityResult(requestCode, resultCode, data)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        // A new share while the app is already running: cache the URIs and push
+        // them to Dart (the listener opens the send preparation page).
+        if (::shareChannel.isInitialized &&
+            intent.action?.startsWith("android.intent.action.SEND") == true
+        ) {
+            shareChannel.handleShareIntent(intent)
+            shareChannel.pushPendingShare()
         }
     }
 }
