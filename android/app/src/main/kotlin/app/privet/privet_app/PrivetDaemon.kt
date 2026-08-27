@@ -75,7 +75,7 @@ object PrivetDaemon {
             .put("ipc_endpoint", socketPath)
             .put("quic_port", 47808)
             .put("tcp_port", 47808)
-            .put("discovery_port", 47808)
+            .put("discovery_port", 47809) // UDP; must differ from QUIC's UDP 47808
         file.writeText(config.toString())
     }
 

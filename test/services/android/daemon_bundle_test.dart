@@ -29,7 +29,9 @@ void main() {
     expect(cfg['ipc_endpoint'], bundle.socketPath);
     expect(cfg['quic_port'], 47808);
     expect(cfg['tcp_port'], 47808);
-    expect(cfg['discovery_port'], 47808);
+    // Discovery is UDP on 47809, NOT 47808: QUIC (UDP 47808) and discovery
+    // (UDP) would collide on the same port ("Address already in use").
+    expect(cfg['discovery_port'], 47809);
     expect(cfg['data_dir'], endsWith('privet/data'));
   });
 
