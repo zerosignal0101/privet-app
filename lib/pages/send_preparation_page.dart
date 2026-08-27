@@ -285,28 +285,17 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
   /// Pair-by-address flow: ask for an IP:Port, then the code the remote device
   /// is displaying, then `pair(ip, quicPort, tcpPort, code)`.
   Future<void> _pairByAddress(BuildContext context, WidgetRef ref) async {
-    final controller = TextEditingController();
-    final address = await showDialog<String>(
+    final result = await showDialog<({String? value, bool ok, String? error})>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Pair by Address'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: '192.168.1.5:47808',
-            labelText: 'IP:Port',
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: const Text('Next')),
-        ],
+      builder: (ctx) => _TextEntryDialog(
+        title: 'Pair by Address',
+        label: 'IP:Port',
+        hint: '192.168.1.5:47808',
+        submitLabel: 'Next',
+        onSubmit: (value) async => (value: value, ok: true, error: null),
       ),
     );
-    controller.dispose();
+    final address = result?.value;
     if (address == null || address.isEmpty) return;
 
     final ip = address.split(':').first;
@@ -381,48 +370,21 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
     String title = 'Enter Their Code',
     required Future<dynamic> Function(String code) onPair,
   }) async {
-    final controller = TextEditingController();
-    final result = await showDialog<({bool ok, String? error})>(
+    final result = await showDialog<({String? value, bool ok, String? error})>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: '6-digit code',
-                hintText: '123456',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () async {
-              final code = controller.text.trim();
-              if (code.isEmpty) return;
-              try {
-                final res = await onPair(code);
-                if (!ctx.mounted) return;
-                final paired = res != null && (res as dynamic).paired == true;
-                Navigator.pop(
-                    ctx, (ok: paired, error: paired ? null : 'Code rejected'));
-              } catch (e) {
-                if (!ctx.mounted) return;
-                Navigator.pop(ctx, (ok: false, error: e.toString()));
-              }
-            },
-            child: const Text('Pair'),
-          ),
-        ],
+      builder: (ctx) => _TextEntryDialog(
+        title: title,
+        label: '6-digit code',
+        hint: '123456',
+        submitLabel: 'Pair',
+        keyboardType: TextInputType.number,
+        onSubmit: (code) async {
+          final res = await onPair(code);
+          final paired = res != null && (res as dynamic).paired == true;
+          return (value: code, ok: paired, error: paired ? null : 'Code rejected');
+        },
       ),
     );
-    controller.dispose();
 
     if (result == null) return false;
     if (result.ok) {
@@ -916,6 +878,83 @@ class _BottomBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A single-text-field alert dialog that owns its [TextEditingController] so
+/// the controller outlives the route's exit animation. Disposing an external
+/// controller as soon as `showDialog`'s future resolves (i.e. at
+/// `Navigator.pop`) crashes the next rebuild of the still-fading-out `TextField`
+/// ("A TextEditingController was used after being disposed") — the controller
+/// must live until the route subtree is unmounted, which happens in this
+/// State's `dispose()`.
+class _TextEntryDialog extends StatefulWidget {
+  const _TextEntryDialog({
+    required this.title,
+    required this.label,
+    required this.hint,
+    required this.submitLabel,
+    required this.onSubmit,
+    this.keyboardType,
+  });
+
+  final String title;
+  final String label;
+  final String hint;
+  final String submitLabel;
+  final TextInputType? keyboardType;
+
+  /// Runs the value the user typed. Returning `(ok: true)` pops the dialog;
+  /// throwing pops with an error record the caller shows.
+  final Future<({String value, bool ok, String? error})> Function(String value)
+      onSubmit;
+
+  @override
+  State<_TextEntryDialog> createState() => _TextEntryDialogState();
+}
+
+class _TextEntryDialogState extends State<_TextEntryDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final value = _controller.text.trim();
+    if (value.isEmpty) return;
+    try {
+      final result = await widget.onSubmit(value);
+      if (!mounted) return;
+      Navigator.pop(context, result);
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context, (value: value, ok: false, error: e.toString()));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        decoration: InputDecoration(
+          labelText: widget.label,
+          hintText: widget.hint,
+        ),
+        keyboardType: widget.keyboardType,
+        autofocus: true,
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel')),
+        FilledButton(onPressed: _submit, child: Text(widget.submitLabel)),
+      ],
     );
   }
 }
