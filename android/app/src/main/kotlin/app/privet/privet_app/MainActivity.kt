@@ -1,5 +1,6 @@
 package app.privet.privet_app
 
+import android.content.Intent
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -24,6 +25,20 @@ class MainActivity : FlutterActivity() {
                 }
                 else -> result.notImplemented()
             }
+        }
+
+        // Promotes the daemon process to a foreground service (startForeground
+        // with type dataSync) once the Dart side confirms privetd is running.
+        MethodChannel(messenger, "privet/daemon_service").setMethodCallHandler { call, result ->
+            if (call.method == "start") {
+                val intent = Intent(this, PrivetDaemonService::class.java)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    startForegroundService(intent)
+                } else {
+                    startService(intent)
+                }
+                result.success(null)
+            } else result.notImplemented()
         }
     }
 }

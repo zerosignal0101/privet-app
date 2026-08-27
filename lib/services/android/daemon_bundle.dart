@@ -1,9 +1,23 @@
 import 'dart:io';
 
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show MethodChannel, rootBundle;
 import 'package:path_provider/path_provider.dart';
 
 import 'daemon_config.dart';
+
+const _daemonServiceChannel = MethodChannel('privet/daemon_service');
+
+/// Promotes the daemon process to a foreground service so Android doesn't kill
+/// it (and its bundled privetd child) when the UI is backgrounded. Best-effort:
+/// if the channel is missing the daemon still runs, it just isn't pinned.
+/// Call only after the daemon is confirmed running.
+Future<void> startForegroundService() async {
+  try {
+    await _daemonServiceChannel.invokeMethod('start');
+  } catch (_) {
+    // Channel unavailable on this platform — keep the daemon running unpinned.
+  }
+}
 
 /// Manages the on-device privetd lifecycle assets: extracts the bundled ELF
 /// for this ABI out of `assets/bin/<abi>/privetd`, writes the daemon config,
