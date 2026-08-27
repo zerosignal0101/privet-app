@@ -7,6 +7,7 @@ import '../services/android/daemon_bundle.dart';
 import '../services/daemon_supervisor.dart';
 import '../services/device_name.dart';
 import '../services/ipc/dto.dart';
+import '../providers/settings.dart';
 import '../services/privet_service.dart';
 
 enum DaemonStateKind { stopped, starting, running, error }
@@ -85,6 +86,17 @@ class DaemonStateNotifier extends Notifier<DaemonSnapshot> {
   Future<void> stop() async {
     await ref.read(daemonSupervisorProvider).stop();
     state = DaemonSnapshot(kind: DaemonStateKind.stopped);
+  }
+
+  /// Stops the daemon on app exit unless the user chose to leave it running
+  /// ("Leave Daemon Running"). Only reached on desktop, where closing the last
+  /// window requests an app exit; on Android the in-process daemon dies with
+  /// the process and this path never fires.
+  Future<void> stopUnlessLeavingRunning() async {
+    // Read the persisted pref, not provider state: the Settings tab may never
+    // have been opened this session, so settingsProvider may not have loaded.
+    if (await loadLeaveDaemonRunningPref()) return;
+    await stop();
   }
 
   Future<void> restart() async {

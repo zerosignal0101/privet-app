@@ -1,4 +1,6 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -93,15 +95,18 @@ class SettingsPage extends ConsumerWidget {
             ),
           ),
 
-          // Leave daemon running (app-local pref)
-          SwitchListTile(
-            secondary: const Icon(Icons.power_settings_new),
-            title: const Text('Leave Daemon Running'),
-            subtitle: const Text('Keep privetd alive after the app closes'),
-            value: settings.leaveDaemonRunning,
-            onChanged: (v) =>
-                ref.read(settingsProvider.notifier).setLeaveDaemonRunning(v),
-          ),
+          // Leave daemon running (app-local pref). Desktop only: on Android the
+          // in-process daemon lives and dies with the process (pinned by the
+          // foreground service), so the setting would have no effect.
+          if (defaultTargetPlatform != TargetPlatform.android)
+            SwitchListTile(
+              secondary: const Icon(Icons.power_settings_new),
+              title: const Text('Leave Daemon Running'),
+              subtitle: const Text('Keep privetd alive after the app closes'),
+              value: settings.leaveDaemonRunning,
+              onChanged: (v) =>
+                  ref.read(settingsProvider.notifier).setLeaveDaemonRunning(v),
+            ),
 
           const Divider(),
 

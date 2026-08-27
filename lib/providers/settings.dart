@@ -9,6 +9,15 @@ import '../state/daemon_state.dart';
 /// values (`saveDir`, `acceptAllTrusted`, `collisionPolicy`) are refreshed via
 /// [SettingsNotifier.loadFromDaemon]; app prefs (`deviceName`,
 /// `leaveDaemonRunning`) persist in SharedPreferences.
+
+/// Reads the persisted "leave daemon running" pref. [settingsProvider] loads
+/// its prefs asynchronously and may never have built (the Settings tab may
+/// never have been opened), so exit-time decisions read the pref directly
+/// instead of provider state.
+Future<bool> loadLeaveDaemonRunningPref() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getBool('leave_daemon_running') ?? false;
+}
 class Settings {
   const Settings({
     this.deviceName = 'privet-device',

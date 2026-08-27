@@ -1,3 +1,5 @@
+import 'dart:ui' show AppExitResponse;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,12 +19,30 @@ class PrivetApp extends ConsumerStatefulWidget {
 }
 
 class _PrivetAppState extends ConsumerState<PrivetApp> {
+  late final AppLifecycleListener _lifecycleListener;
+
   @override
   void initState() {
     super.initState();
+    _lifecycleListener = AppLifecycleListener(
+      onExitRequested: () async {
+        // Desktop: honor "Leave Daemon Running" by stopping the spawned daemon
+        // when the app closes, unless the user opted to keep it. Android never
+        // reaches this path (no window-close exit; the in-process daemon is
+        // pinned by the foreground service), and stop() is a no-op there.
+        await ref.read(daemonStateProvider.notifier).stopUnlessLeavingRunning();
+        return AppExitResponse.exit;
+      },
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(daemonStateProvider.notifier).start();
     });
+  }
+
+  @override
+  void dispose() {
+    _lifecycleListener.dispose();
+    super.dispose();
   }
 
   @override
