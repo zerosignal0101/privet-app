@@ -11,6 +11,8 @@ import '../models/file_tree.dart';
 import '../providers/peers.dart';
 import '../providers/send_preparation.dart';
 import '../providers/settings.dart';
+import '../services/android/content_uri_dir_helper.dart';
+import '../services/android/content_uri_helper.dart';
 import '../services/clipboard_service.dart';
 import '../services/ipc/events.dart';
 import '../state/daemon_state.dart';
@@ -494,6 +496,18 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
   }
 
   Future<void> _pickFolder(WidgetRef ref) async {
+    if (Platform.isAndroid) {
+      // SAF tree picker (ACTION_OPEN_DOCUMENT_TREE) is more reliable on Android
+      // than file_picker's directory picker. It caches the tree to real paths
+      // (the daemon only reads real paths) and returns the cached root dir,
+      // which we hand to addFiles — the daemon recurses directories itself.
+      await clearSendCache(); // drop stale sessions
+      final root = await ContentUriDirectoryHelper.pickAndCacheDirectory();
+      if (root != null) {
+        ref.read(sendPreparationProvider.notifier).addFiles([root]);
+      }
+      return;
+    }
     final dirPath = await FilePicker.getDirectoryPath();
     if (dirPath != null) {
       ref.read(sendPreparationProvider.notifier).addFiles([dirPath]);

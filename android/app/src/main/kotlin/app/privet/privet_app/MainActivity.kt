@@ -7,12 +7,19 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private lateinit var fileChannel: PrivetFileChannel
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         val messenger = flutterEngine.dartExecutor.binaryMessenger
 
         // Byte bridge to the on-device privetd unix socket.
         PrivetIpcChannel().register(messenger)
+
+        // SAF content-URI operations for send/receive paths (directory picker
+        // results are forwarded via onActivityResult below).
+        fileChannel = PrivetFileChannel(this)
+        fileChannel.register(messenger)
 
         // Small platform queries the Dart side needs (CPU ABI for the daemon bundle).
         MethodChannel(messenger, "privet/platform").setMethodCallHandler { call, result ->
@@ -39,6 +46,13 @@ class MainActivity : FlutterActivity() {
                 }
                 result.success(null)
             } else result.notImplemented()
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (::fileChannel.isInitialized) {
+            fileChannel.onActivityResult(requestCode, resultCode, data)
         }
     }
 }
