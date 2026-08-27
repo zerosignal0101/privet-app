@@ -33,7 +33,8 @@ class MainActivity : FlutterActivity() {
             shareChannel.handleShareIntent(intent)
         }
 
-        // Small platform queries the Dart side needs (CPU ABI for the daemon bundle).
+        // Small platform queries the Dart side needs (CPU ABI for the daemon
+        // bundle, device model for the default device name).
         MethodChannel(messenger, "privet/platform").setMethodCallHandler { call, result ->
             when (call.method) {
                 "getAbi" -> {
@@ -41,6 +42,11 @@ class MainActivity : FlutterActivity() {
                         ?: "arm64-v8a"
                     Log.d("PrivetPlatform", "primary ABI: $abi")
                     result.success(abi)
+                }
+                "getDeviceName" -> {
+                    val model = android.os.Build.MODEL
+                    val manufacturer = android.os.Build.MANUFACTURER
+                    result.success("$manufacturer $model")
                 }
                 else -> result.notImplemented()
             }

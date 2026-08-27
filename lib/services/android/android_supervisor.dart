@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart' show MethodChannel;
 
 import '../daemon_supervisor.dart';
+import '../device_name.dart';
 import '../ipc/android_channel_transport.dart';
 import 'daemon_bundle.dart';
 
@@ -14,7 +15,9 @@ const _daemonChannel = MethodChannel('privet/daemon');
 /// asks Kotlin to start it and the supervisor polls the socket until it
 /// answers. Used by [DaemonStateNotifier.start] when running on Android.
 Future<DaemonSupervisor> androidSupervisor() async {
-  final bundle = await AndroidDaemonBundle.resolve();
+  final bundle = await AndroidDaemonBundle.resolve(
+    deviceName: await resolveDefaultDeviceName(),
+  );
   final config = await bundle.writeConfig();
   // The in-process daemon creates its own data/save dirs; the app pre-creates
   // the external save dir since a spawned child is denied doing so on modern

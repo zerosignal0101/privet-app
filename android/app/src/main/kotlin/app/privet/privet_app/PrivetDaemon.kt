@@ -1,6 +1,7 @@
 package app.privet.privet_app
 
 import android.content.Context
+import android.os.Build
 import android.os.Environment
 import android.util.Log
 import org.json.JSONObject
@@ -68,8 +69,10 @@ object PrivetDaemon {
         file.parentFile?.mkdirs()
         val dataDir = File(context.filesDir, "privet/data").path
         val saveDir = File(Environment.getExternalStorageDirectory(), "Privet").path
+        val deviceName = "${Build.MANUFACTURER} ${Build.MODEL}".trim()
+            .ifEmpty { "privet-device" }
         val config = JSONObject()
-            .put("device_name", "privet-device")
+            .put("device_name", deviceName)
             .put("data_dir", dataDir)
             .put("save_dir", saveDir)
             .put("ipc_endpoint", socketPath)

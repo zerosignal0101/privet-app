@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/android/android_supervisor.dart';
 import '../services/android/daemon_bundle.dart';
 import '../services/daemon_supervisor.dart';
+import '../services/device_name.dart';
 import '../services/ipc/dto.dart';
 import '../services/privet_service.dart';
 
@@ -46,7 +47,9 @@ final daemonSupervisorProvider = Provider<DaemonSupervisor>((ref) {
   return DaemonSupervisor(
     endpoint: endpoint,
     executablePath: bin,
-    configPath: null, // default config; app-managed config file lands in Plan 4
+    // Desktop: a minimal config (device_name only) so the daemon announces the
+    // host name; Android writes its own config via androidSupervisor().
+    configPath: writeDesktopDeviceNameConfig(),
   );
 });
 

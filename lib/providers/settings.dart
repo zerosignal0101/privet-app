@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/device_name.dart';
 import '../services/ipc/dto.dart';
 import '../state/daemon_state.dart';
 
@@ -58,7 +59,9 @@ class SettingsNotifier extends Notifier<Settings> {
   Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     state = state.copyWith(
-      deviceName: prefs.getString('device_name') ?? state.deviceName,
+      // Default device name: host name on desktop, device model on Android.
+      deviceName:
+          prefs.getString('device_name') ?? await resolveDefaultDeviceName(),
       leaveDaemonRunning:
           prefs.getBool('leave_daemon_running') ?? state.leaveDaemonRunning,
     );
