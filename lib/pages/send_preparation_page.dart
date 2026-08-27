@@ -488,7 +488,7 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
   }
 
   Future<void> _pickFiles(WidgetRef ref) async {
-    final result = await FilePicker.pickFiles(allowMultiple: true);
+    final result = await FilePicker.platform.pickFiles(allowMultiple: true);
     if (result != null && result.files.isNotEmpty) {
       final paths = result.files.map((f) => f.path!).toList();
       ref.read(sendPreparationProvider.notifier).addFiles(paths);
@@ -508,7 +508,7 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
       }
       return;
     }
-    final dirPath = await FilePicker.getDirectoryPath();
+    final dirPath = await FilePicker.platform.getDirectoryPath();
     if (dirPath != null) {
       ref.read(sendPreparationProvider.notifier).addFiles([dirPath]);
     }

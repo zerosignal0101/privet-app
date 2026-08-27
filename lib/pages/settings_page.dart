@@ -171,7 +171,7 @@ class SettingsPage extends ConsumerWidget {
   }
 
   Future<void> _pickSaveDir(WidgetRef ref) async {
-    final result = await FilePicker.getDirectoryPath();
+    final result = await FilePicker.platform.getDirectoryPath();
     if (result != null) {
       await ref.read(settingsProvider.notifier).setSaveDir(result);
     }

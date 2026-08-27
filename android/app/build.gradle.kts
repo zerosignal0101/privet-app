@@ -7,7 +7,10 @@ plugins {
 android {
     namespace = "app.privet.privet_app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // Pin to the NDK already installed on this machine (and the one used to
+    // cross-compile the bundled privetd) instead of Flutter's default, which
+    // would trigger a ~1GB NDK download on first build.
+    ndkVersion = "30.0.14904198"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
