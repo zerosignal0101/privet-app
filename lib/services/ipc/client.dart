@@ -9,6 +9,7 @@ import 'requests.dart';
 import 'transport.dart';
 
 export 'events.dart';
+export 'transport.dart';
 
 class PrivetIpcException implements Exception {
   PrivetIpcException(this.code, this.message);

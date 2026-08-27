@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:privet_app/services/ipc/client.dart';
-import 'package:privet_app/services/ipc/transport.dart';
 
 Map<String, dynamic> _msg(String type, Map<String, dynamic> body) =>
     {'type': type, ...body};
