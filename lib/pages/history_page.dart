@@ -1,11 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 
 import '../models/file_tree.dart';
 import '../providers/history.dart';
+import '../providers/send_preparation.dart';
 import '../services/ipc/dto.dart';
 import '../widgets/file_tree_view.dart';
+import 'send_preparation_page.dart';
 
 class HistoryPage extends ConsumerWidget {
   const HistoryPage({super.key});
@@ -176,10 +180,28 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
   Future<void> _resend(BuildContext context, WidgetRef ref) async {
     final record = widget.record;
     if (record.direction == 'receive') {
-      // Forwarding received files to a different peer needs SendPreparationPage
-      // (Plan 3 Task 9); until then, surface a message.
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Forwarding not yet available')),
+      // Forward received files to a different peer: build SendFileEntry from
+      // the detail's absolute paths and open the send-preparation page.
+      final detail =
+          await ref.read(transferHistoryProvider.notifier).detail(record.transferId);
+      final entries = <SendFileEntry>[];
+      for (final f in detail.files) {
+        final abs = f.absolutePath;
+        if (abs != null && File(abs).existsSync()) {
+          entries.add(SendFileEntry(
+              path: abs, relativePath: f.relativePath, size: f.size));
+        }
+      }
+      if (!context.mounted) return;
+      if (entries.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Received files not found on disk')));
+        return;
+      }
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => SendPreparationPage(initialEntries: entries)),
       );
       return;
     }
