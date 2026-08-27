@@ -45,6 +45,14 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="*/*"/>
             </intent-filter>
+            <!-- privet:// deeplink, e.g. a pairing QR scan; consumed by the
+                 DeeplinkService (app_links) at runtime. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="privet"/>
+            </intent-filter>
         </activity>
         <service
             android:name=".PrivetDaemonService"
