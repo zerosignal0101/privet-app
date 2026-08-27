@@ -66,4 +66,20 @@ void main() {
     );
     await expectLater(supervisor.ensureRunning(), throwsStateError);
   });
+
+  test('resolvePosixEndpoint mirrors the daemon default (POSIX)', () {
+    if (Platform.isWindows) return; // POSIX-only
+    const xdg = '/tmp/user-runtime';
+    final previous = Platform.environment['XDG_RUNTIME_DIR'];
+    Platform.environment['XDG_RUNTIME_DIR'] = xdg;
+    expect(resolvePosixEndpoint(), '$xdg/privet/privet.sock');
+    if (previous == null) {
+      Platform.environment.remove('XDG_RUNTIME_DIR');
+    } else {
+      Platform.environment['XDG_RUNTIME_DIR'] = previous;
+    }
+    final endpoint = resolvePosixEndpoint();
+    expect(endpoint, endsWith('/privet/privet.sock'));
+    expect(endpoint, isNot(startsWith('$xdg/')));
+  });
 }
