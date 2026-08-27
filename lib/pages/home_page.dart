@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../providers/pairing.dart';
 import '../providers/peers.dart';
 import '../providers/transfers.dart';
 import '../services/ipc/dto.dart';
+import '../services/pairing_url.dart';
+import '../state/daemon_state.dart';
 import '../utils/format.dart';
 import '../widgets/pairing_banner.dart';
 import '../widgets/transfer_tile.dart';
@@ -27,6 +30,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     final activeMap = ref.watch(activeTransfersProvider);
     final identity = ref.watch(identityProvider);
     final trusted = ref.watch(trustedListProvider);
+    final status = ref.watch(daemonStatusProvider).value;
+
+    // Reachable hosts for the pairing QR (skips wildcard/unspecified bindings).
+    final hosts = <String>[
+      for (final addr in [status?.quicAddr, status?.tcpAddr])
+        if (addr != null && _isReachableHost(addr)) addr,
+    ];
 
     final activeList = activeMap.values.toList();
     final awaitingAccept = activeList.where((t) => t.isAwaitingAccept).toList();
@@ -52,6 +62,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           children: [
             _IdentityCard(
               identity: identity.value,
+              hosts: hosts,
               showQr: _showQr,
               onToggleQr: () => setState(() => _showQr = !_showQr),
             ),
@@ -164,11 +175,13 @@ class _HomePageState extends ConsumerState<HomePage> {
 
 class _IdentityCard extends StatelessWidget {
   final IdentityDto? identity;
+  final List<String> hosts;
   final bool showQr;
   final VoidCallback onToggleQr;
 
   const _IdentityCard({
     this.identity,
+    this.hosts = const [],
     required this.showQr,
     required this.onToggleQr,
   });
@@ -218,18 +231,117 @@ class _IdentityCard extends StatelessWidget {
             ),
             if (showQr) ...[
               const SizedBox(height: 12),
-              // Task 10 replaces this placeholder with the real pairing QR.
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                  child: Text('QR pairing code will appear here',
-                      style: TextStyle(color: Colors.grey, fontSize: 12)),
-                ),
+              _PairingQrCode(
+                fingerprint: fp,
+                deviceName: deviceName,
+                hosts: hosts,
               ),
             ],
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Generates a fresh pairing code and renders the QR the other device scans to
+/// pair with this device (`privet://pair?h=…&fp=…&n=…&code=…`).
+class _PairingQrCode extends ConsumerStatefulWidget {
+  final String fingerprint;
+  final String deviceName;
+  final List<String> hosts;
+
+  const _PairingQrCode({
+    required this.fingerprint,
+    required this.deviceName,
+    required this.hosts,
+  });
+
+  @override
+  ConsumerState<_PairingQrCode> createState() => _PairingQrCodeState();
+}
+
+class _PairingQrCodeState extends ConsumerState<_PairingQrCode> {
+  String? _code;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final service = ref.read(daemonStateProvider).service;
+    String? code;
+    if (service != null) {
+      try {
+        code = (await service.generatePairingCode()).code;
+      } catch (_) {
+        // daemon unreachable — fall through to the error state below
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _code = code;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    final code = _code;
+    if (code == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: Text('Could not generate a pairing code',
+              style: TextStyle(color: Colors.grey, fontSize: 12)),
+        ),
+      );
+    }
+
+    final url = PairingUrl.build(
+      fingerprint: widget.fingerprint,
+      deviceName: widget.deviceName,
+      hosts: widget.hosts,
+      code: code,
+    );
+
+    return Column(
+      children: [
+        QrImageView(
+          data: url,
+          version: QrVersions.auto,
+          size: 180,
+          eyeStyle: const QrEyeStyle(
+            eyeShape: QrEyeShape.square,
+            color: Colors.black87,
+          ),
+          dataModuleStyle: const QrDataModuleStyle(
+            dataModuleShape: QrDataModuleShape.square,
+            color: Colors.black87,
+          ),
+          padding: const EdgeInsets.all(4),
+        ),
+        const SizedBox(height: 8),
+        Text('Code: $code',
+            style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'monospace',
+                letterSpacing: 2)),
+        const SizedBox(height: 2),
+        Text('Scan with the Privet app to pair',
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+      ],
     );
   }
 }
@@ -263,6 +375,27 @@ class _TrustedPeerTile extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Nearby (discovered) peer tile
 // ---------------------------------------------------------------------------
+
+/// True when an `ip:port` address is a usable LAN host for a pairing QR
+/// (skips wildcard / loopback / unspecified bindings).
+bool _isReachableHost(String addr) {
+  String ip;
+  if (addr.startsWith('[')) {
+    final end = addr.indexOf(']');
+    if (end < 0) return false;
+    ip = addr.substring(1, end);
+  } else {
+    ip = addr.split(':').first;
+  }
+  if (ip.isEmpty ||
+      ip == '0.0.0.0' ||
+      ip == '::' ||
+      ip == '127.0.0.1' ||
+      ip == '::1') {
+    return false;
+  }
+  return true;
+}
 
 class _PeerTile extends StatelessWidget {
   final PeerDto peer;

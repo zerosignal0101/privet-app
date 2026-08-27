@@ -1,6 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers/peers.dart';
+import '../services/deeplink_service.dart';
+import '../services/pairing_url.dart';
+import '../services/privet_service.dart';
+import '../state/daemon_state.dart';
 import 'history_page.dart';
 import 'home_page.dart';
 import 'settings_page.dart';
@@ -14,12 +21,38 @@ class ShellTabNotifier extends Notifier<int> {
   void select(int index) => state = index;
 }
 
-/// Bottom navigation shell with 3 tabs: Home, History, Settings.
-class ShellPage extends ConsumerWidget {
+/// Bottom navigation shell with 3 tabs: Home, History, Settings. Also owns the
+/// deeplink listener: a scanned `privet://pair` URL pairs this device with the
+/// remote (matching by fingerprint, or by endpoint as a fallback).
+class ShellPage extends ConsumerStatefulWidget {
   const ShellPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ShellPage> createState() => _ShellPageState();
+}
+
+class _ShellPageState extends ConsumerState<ShellPage> {
+  StreamSubscription<ParsedPairingUrl>? _deeplinkSub;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final service = ref.read(deeplinkServiceProvider);
+      _deeplinkSub = service.pairingUrls.listen(_handlePairingUrl);
+      service.start();
+    });
+  }
+
+  @override
+  void dispose() {
+    _deeplinkSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final index = ref.watch(shellTabProvider);
     return Scaffold(
       body: IndexedStack(
@@ -49,5 +82,49 @@ class ShellPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _handlePairingUrl(ParsedPairingUrl url) async {
+    final service = ref.read(daemonStateProvider).service;
+    if (service == null) return;
+    try {
+      final paired = await _pairWith(url, service);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(paired
+            ? 'Paired with ${url.deviceName.isNotEmpty ? url.deviceName : 'device'}'
+            : 'Pairing failed'),
+      ));
+      if (paired) ref.invalidate(trustedListProvider);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Pairing failed: $e')));
+    }
+  }
+
+  /// Pair using the URL's fingerprint (matched against discovered peers), or
+  /// fall back to endpoint pairing when the peer has not been discovered yet.
+  Future<bool> _pairWith(ParsedPairingUrl url, PrivetService service) async {
+    final code = url.code ?? '';
+    final matched = ref
+        .read(peerListProvider)
+        .where((p) => p.deviceFingerprint == url.fingerprint)
+        .isNotEmpty;
+    if (matched) {
+      return (await service.pair(fingerprint: url.fingerprint, code: code))
+          .paired;
+    }
+    if (url.hosts.isNotEmpty) {
+      final host = url.hosts.first;
+      final colon = host.lastIndexOf(':');
+      final ip = colon >= 0 ? host.substring(0, colon) : host;
+      final port =
+          colon >= 0 ? int.tryParse(host.substring(colon + 1)) ?? 47808 : 47808;
+      return (await service.pair(
+              ip: ip, quicPort: port, tcpPort: port, code: code))
+          .paired;
+    }
+    return false;
   }
 }

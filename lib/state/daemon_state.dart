@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/daemon_supervisor.dart';
+import '../services/ipc/dto.dart';
 import '../services/privet_service.dart';
 
 enum DaemonStateKind { stopped, starting, running, error }
@@ -49,6 +50,11 @@ final daemonSupervisorProvider = Provider<DaemonSupervisor>((ref) {
 
 final daemonStateProvider =
     NotifierProvider<DaemonStateNotifier, DaemonSnapshot>(DaemonStateNotifier.new);
+
+/// The daemon's current `get_status` snapshot (addresses for the pairing QR).
+final daemonStatusProvider = FutureProvider<DaemonStatus?>((ref) async {
+  return ref.watch(daemonStateProvider).service?.status();
+});
 
 class DaemonStateNotifier extends Notifier<DaemonSnapshot> {
   @override
