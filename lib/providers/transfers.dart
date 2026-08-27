@@ -194,6 +194,12 @@ class ActiveTransfersNotifier extends Notifier<Map<String, ActiveTransfer>> {
         retryable: retryable);
   }
 
+  /// Drop a transfer from the live map (e.g. a terminal tile's countdown
+  /// expired). The daemon keeps authoritative history via the history provider.
+  void remove(String transferId) {
+    state = Map<String, ActiveTransfer>.from(state)..remove(transferId);
+  }
+
   Future<void> accept(String id) async {
     await ref.read(daemonStateProvider).service?.acceptTransfer(id, accept: true);
     final cur = state[id];
