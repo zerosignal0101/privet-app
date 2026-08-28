@@ -11,6 +11,13 @@ class _NoTransport implements Transport {
   Future<TransportConnection> connect() async => throw UnimplementedError();
 }
 
+/// A transport whose connect() fails — for exercising the shutdown helper
+/// against a daemon that is not running.
+class _ThrowingTransport implements Transport {
+  @override
+  Future<TransportConnection> connect() async => throw StateError('no daemon');
+}
+
 PrivetService _fakeService() => PrivetService(PrivetIpcClient(_NoTransport()));
 
 class _FakeProcess implements Process {
@@ -102,6 +109,68 @@ void main() {
     );
     await supervisor.stop();
     expect(stopped, isTrue);
+  });
+
+  test('shutdownAttachedDaemon asks the daemon to stop over IPC', () async {
+    // A daemon the app attached to (not spawned) has no child Process, so stop
+    // must tell it to shut down over the endpoint. The daemon answers the
+    // connection handshake, then the shutdown request.
+    var shutdownSeen = false;
+    final transport = MemoryTransport((requests) => requests.map((req) {
+          final id = req['request_id'] as String;
+          final method = ((req['request'] as Map<String, dynamic>)['method'])
+              as String;
+          switch (method) {
+            case 'get_status':
+              return {
+                'type': 'response',
+                'request_id': id,
+                'payload': {
+                  'kind': 'status',
+                  'data': {
+                    'protocol_version': 1,
+                    'daemon_version': '0.1.0',
+                    'session_id': 's',
+                    'device_fingerprint': 'fp',
+                    'quic_addr': 'q',
+                    'tcp_addr': 't',
+                    'active_transfers': <String>[],
+                  },
+                },
+              };
+            case 'subscribe_events':
+              return {
+                'type': 'response',
+                'request_id': id,
+                'payload': {
+                  'kind': 'event_replay',
+                  'data': {
+                    'events': <Object?>[],
+                    'oldest_available': null,
+                    'latest': 0,
+                  },
+                },
+              };
+            case 'shutdown':
+              shutdownSeen = true;
+              return {
+                'type': 'response',
+                'request_id': id,
+                'payload': {'kind': 'ack', 'data': null},
+              };
+          }
+          throw StateError('unexpected method: $method');
+        }).toList());
+
+    await shutdownAttachedDaemon('test-endpoint',
+        transportFactory: () => transport);
+    expect(shutdownSeen, isTrue, reason: 'attached daemon must be told to stop');
+  });
+
+  test('shutdownAttachedDaemon tolerates an unreachable daemon', () async {
+    // No daemon on the endpoint: connect fails and the helper must not throw.
+    await shutdownAttachedDaemon('test-endpoint',
+        transportFactory: () => _ThrowingTransport());
   });
 
   test('resolvePosixEndpoint mirrors the daemon default (POSIX)', () {

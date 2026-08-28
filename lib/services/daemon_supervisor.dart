@@ -140,6 +140,27 @@ class DaemonSupervisor {
   }
 }
 
+/// Asks an attached privetd (one the app did not spawn) to shut down over IPC.
+/// [DaemonSupervisor.stop] only kills a daemon the app spawned; a daemon that
+/// was already running when the app started has no child [Process], so it must
+/// be told to stop — otherwise closing the app with "Leave Daemon Running" off
+/// leaves privetd alive. [transportFactory] is injectable for tests.
+Future<void> shutdownAttachedDaemon(String endpoint,
+    {Transport Function()? transportFactory}) async {
+  final client = PrivetIpcClient(
+      transportFactory?.call() ?? DaemonSupervisor._transportFor(endpoint));
+  try {
+    await client.connect();
+    await client.shutdown();
+  } catch (_) {
+    // Already gone or unreachable — nothing to stop.
+  } finally {
+    try {
+      await client.close();
+    } catch (_) {}
+  }
+}
+
 const String defaultWindowsPipeName = r'\\.\pipe\privet-user-v1';
 
 /// POSIX IPC endpoint mirroring privet-ipc's `default_endpoint()` (spec 09 §2):

@@ -1,10 +1,17 @@
 import 'dart:ui' show AppExitResponse;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'pages/shell_page.dart';
 import 'state/daemon_state.dart';
+
+/// Native → Dart: the Windows runner intercepts WM_CLOSE here because the
+/// engine's cancelable-exit support (which would call `onExitRequested`) was
+/// reverted upstream — closing the window otherwise never lets Dart clean up,
+/// so a spawned privetd keeps running regardless of "Leave Daemon Running".
+const MethodChannel _windowChannel = MethodChannel('privet/window');
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +31,10 @@ class _PrivetAppState extends ConsumerState<PrivetApp> {
   @override
   void initState() {
     super.initState();
+    // macOS/Linux (and any engine that supports cancelable exit): the close
+    // request arrives through onExitRequested. On Windows this never fires
+    // (engine reverted WM_CLOSE interception), so the runner intercepts the
+    // close and calls the same cleanup via the "privet/window" channel below.
     _lifecycleListener = AppLifecycleListener(
       onExitRequested: () async {
         // Desktop: honor "Leave Daemon Running" by stopping the spawned daemon
@@ -34,13 +45,28 @@ class _PrivetAppState extends ConsumerState<PrivetApp> {
         return AppExitResponse.exit;
       },
     );
+    _windowChannel.setMethodCallHandler(_onWindowClose);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(daemonStateProvider.notifier).start();
     });
   }
 
+  /// Native window close (Windows runner): stop the daemon unless the user
+  /// chose "Leave Daemon Running", then let the native side close the window.
+  /// The native side waits for this reply, so bound the cleanup — a stalled
+  /// stop must never leave the window hanging.
+  Future<Object?> _onWindowClose(MethodCall call) async {
+    if (call.method != 'onWindowClose') return null;
+    await Future.any([
+      ref.read(daemonStateProvider.notifier).stopUnlessLeavingRunning(),
+      Future<void>.delayed(const Duration(seconds: 3)),
+    ]);
+    return null;
+  }
+
   @override
   void dispose() {
+    _windowChannel.setMethodCallHandler(null);
     _lifecycleListener.dispose();
     super.dispose();
   }

@@ -51,6 +51,11 @@ final daemonSupervisorProvider = Provider<DaemonSupervisor>((ref) {
     // The daemon config is written (device name + any persisted runtime
     // settings) in DaemonStateNotifier.start before the daemon is spawned.
     configPath: desktopConfigPath(),
+    // A daemon that was already running when the app started (attached, no
+    // child Process) is left alone by supervisor.stop(). Ask it to shut down
+    // over IPC so closing the app with "Leave Daemon Running" off always stops
+    // privetd. Android builds its own supervisor with a JNI stopHandler.
+    stopHandler: () => shutdownAttachedDaemon(endpoint),
   );
 });
 
