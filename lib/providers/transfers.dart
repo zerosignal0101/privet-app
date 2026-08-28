@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/ipc/events.dart';
+import '../services/privet_service.dart';
 import '../state/daemon_state.dart';
 
 enum TransferState {
@@ -62,11 +63,21 @@ class ActiveTransfersNotifier extends Notifier<Map<String, ActiveTransfer>> {
   final Map<String, DateTime> _suspectSince = {};
   bool _reconciling = false;
 
+  /// Whether the daemon is in "Accept All Trusted" mode. When on, incoming
+  /// offers are auto-accepted by the daemon, so the GUI must not show a confirm
+  /// prompt for them. Cached from the daemon's runtime config (and refreshed on
+  /// `runtime_config_changed`).
+  bool _autoAccept = false;
+
   @override
   Map<String, ActiveTransfer> build() {
+    // The daemon may restart (a new service replaces the old); drop any stale
+    // subscription before re-subscribing.
+    _sub?.cancel();
     final service = ref.watch(daemonStateProvider).service;
     if (service != null) {
       _sub = service.events.listen(applyEvent);
+      _loadAutoAccept(service);
     }
     // Safety net: reconcile against the daemon's active_transfers so a tile can
     // never linger forever when a terminal event was missed (disconnect,
@@ -79,6 +90,18 @@ class ActiveTransfersNotifier extends Notifier<Map<String, ActiveTransfer>> {
       _reconcileTimer?.cancel();
     });
     return const {};
+  }
+
+  /// Reads the daemon's current runtime config so [_autoAccept] is known before
+  /// the first offer arrives. The daemon auto-accepts every offer while
+  /// `accept_all_trusted` is set, so incoming offers must not show a confirm.
+  Future<void> _loadAutoAccept(PrivetService service) async {
+    try {
+      final config = await service.runtimeConfig();
+      _autoAccept = config.acceptAllTrusted;
+    } catch (_) {
+      // Daemon unreachable — keep the last known value (false by default).
+    }
   }
 
   /// Drops non-terminal transfers the daemon no longer reports as active.
@@ -156,6 +179,20 @@ class ActiveTransfersNotifier extends Notifier<Map<String, ActiveTransfer>> {
                 verifiedBytes: cur.verifiedBytes,
                 peerName: cur.peerName),
           };
+        } else if (_autoAccept) {
+          // Incoming offer that the daemon will accept automatically ("Accept
+          // All Trusted"). Surface it as a receive in progress — no confirm
+          // prompt, or the tile would briefly show "Accept transfer?" before
+          // the daemon's auto-accept turns it into a progress bar.
+          state = {
+            ...state,
+            transferId: ActiveTransfer(
+                transferId: transferId,
+                direction: 'receive',
+                state: TransferState.transferring,
+                fileCount: fileCount,
+                totalBytes: totalBytes),
+          };
         } else {
           // Incoming offer from a remote sender — surface accept/reject.
           state = {
@@ -227,6 +264,11 @@ class ActiveTransfersNotifier extends Notifier<Map<String, ActiveTransfer>> {
           ...state,
           transferId: _failed(transferId, errorCode, retryable),
         };
+        break;
+      case RuntimeConfigChangedEvent(:final config):
+        // "Accept All Trusted" toggling must affect how later offers are
+        // presented (confirm prompt vs. straight-to-progress).
+        _autoAccept = config.acceptAllTrusted;
         break;
       default:
         break;
