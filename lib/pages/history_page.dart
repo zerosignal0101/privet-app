@@ -8,6 +8,7 @@ import '../models/file_tree.dart';
 import '../providers/history.dart';
 import '../providers/send_preparation.dart';
 import '../services/ipc/dto.dart';
+import '../state/daemon_state.dart';
 import '../widgets/file_tree_view.dart';
 import 'send_preparation_page.dart';
 
@@ -46,7 +47,16 @@ class HistoryPage extends ConsumerWidget {
                   ref.read(transferHistoryProvider.notifier).refresh(),
               child: ListView.builder(
                 itemCount: records.length,
-                itemBuilder: (_, i) => _HistoryRecordTile(record: records[i]),
+                // Key each tile by its transfer id so ListView never recycles a
+                // tile's State onto a different record. Without this, a refresh
+                // (fires after every terminal transfer event) re-uses the State
+                // at each index, and a tile can keep the cached detail — and the
+                // expanded state — of whatever record sat there before, so the
+                // first tile shows another transfer's files.
+                itemBuilder: (_, i) => _HistoryRecordTile(
+                  key: ValueKey(records[i].transferId),
+                  record: records[i],
+                ),
               ),
             ),
     );
@@ -56,7 +66,7 @@ class HistoryPage extends ConsumerWidget {
 class _HistoryRecordTile extends ConsumerStatefulWidget {
   final HistoryEntryDto record;
 
-  const _HistoryRecordTile({required this.record});
+  const _HistoryRecordTile({super.key, required this.record});
 
   @override
   ConsumerState<_HistoryRecordTile> createState() => _HistoryRecordTileState();
@@ -64,13 +74,37 @@ class _HistoryRecordTile extends ConsumerStatefulWidget {
 
 class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
   Future<HistoryDetailDto>? _detailFuture;
+  bool _expanded = false;
+
+  @override
+  void didUpdateWidget(covariant _HistoryRecordTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Never serve a detail fetched for a different record. The ValueKey on the
+    // tile normally gives each record a fresh State, but guard against the tile
+    // being re-bound to another transfer id anyway: drop the stale cache and,
+    // if the tile is currently expanded, refetch for the current record.
+    if (oldWidget.record.transferId != widget.record.transferId) {
+      _detailFuture = null;
+      if (_expanded) {
+        _detailFuture = ref
+            .read(transferHistoryProvider.notifier)
+            .detail(widget.record.transferId);
+      }
+    }
+  }
 
   /// Fetch the per-record file detail lazily when the tile is expanded.
   void _ensureDetail(bool expanded) {
+    _expanded = expanded;
     if (expanded && _detailFuture == null) {
       _detailFuture = ref
           .read(transferHistoryProvider.notifier)
           .detail(widget.record.transferId);
+      // The FutureBuilder sits inside ExpansionTile.children, which is built
+      // from the _detailFuture value captured in build(). Without a rebuild
+      // here the FutureBuilder stays on `future: null` (nothing rendered) until
+      // some unrelated list refresh happens to rebuild the tile.
+      setState(() {});
     }
   }
 
@@ -179,41 +213,57 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
 
   Future<void> _resend(BuildContext context, WidgetRef ref) async {
     final record = widget.record;
-    if (record.direction == 'receive') {
-      // Forward received files to a different peer: build SendFileEntry from
-      // the detail's absolute paths and open the send-preparation page.
-      final detail =
-          await ref.read(transferHistoryProvider.notifier).detail(record.transferId);
-      final entries = <SendFileEntry>[];
-      for (final f in detail.files) {
-        final abs = f.absolutePath;
-        if (abs != null && File(abs).existsSync()) {
-          entries.add(SendFileEntry(
-              path: abs, relativePath: f.relativePath, size: f.size));
+    // A partial send resumes in place: `resume_send` (IPC resume_transfer)
+    // reuses the same transfer id, so the receiver still holds the partial
+    // bytes under it and skips already-received chunks instead of
+    // re-transmitting from zero. Only other cases re-open the preparation page.
+    if (record.direction == 'send' && record.status == 'partial') {
+      final service = ref.read(daemonStateProvider).service;
+      if (service == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Daemon not running')));
         }
-      }
-      if (!context.mounted) return;
-      if (entries.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Received files not found on disk')));
         return;
       }
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => SendPreparationPage(initialEntries: entries)),
-      );
+      try {
+        await service.resumeTransfer(record.transferId);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not resume: $e')));
+        }
+      }
       return;
     }
-    final newId =
-        await ref.read(transferHistoryProvider.notifier).resend(record.transferId);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                newId.isNotEmpty ? 'Transfer re-queued' : 'Resend failed')),
-      );
+    // Other directions/statuses re-open the send-preparation page with the
+    // original files and recipient pre-loaded, so the user can re-target the
+    // transfer, edit the file set, or drop stale files before sending again.
+    final detail =
+        await ref.read(transferHistoryProvider.notifier).detail(record.transferId);
+    final entries = <SendFileEntry>[];
+    for (final f in detail.files) {
+      final abs = f.absolutePath;
+      if (abs != null && File(abs).existsSync()) {
+        entries.add(SendFileEntry(
+            path: abs, relativePath: f.relativePath, size: f.size));
+      }
     }
+    if (!context.mounted) return;
+    if (entries.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Files not found on disk')));
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (_) => SendPreparationPage(
+                initialEntries: entries,
+                initialPeerFingerprint: record.peerDeviceFingerprint,
+                initialPeerName: record.peerName,
+              )),
+    );
   }
 
   Widget _stateBadge(String status, ThemeData theme) {
