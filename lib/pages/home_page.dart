@@ -38,6 +38,13 @@ class _HomePageState extends ConsumerState<HomePage> {
         if (addr != null && _isReachableHost(addr)) addr,
     ];
 
+    // The daemon can discover this device itself (e.g. its own beacon on a
+    // multi-homed NIC); never let "Nearby Devices" show or target us.
+    final identityFp = identity.value?.deviceFingerprint;
+    final nearbyPeers = peers
+        .where((p) => p.deviceFingerprint != identityFp)
+        .toList();
+
     final activeList = activeMap.values.toList();
     final awaitingAccept = activeList.where((t) => t.isAwaitingAccept).toList();
     final transferring = activeList
@@ -79,19 +86,22 @@ class _HomePageState extends ConsumerState<HomePage> {
             // Awaiting-accept offers
             if (awaitingAccept.isNotEmpty) ...[
               _sectionTitle(context, 'Incoming'),
-              ...awaitingAccept.map((t) => TransferTile(transfer: t)),
+              ...awaitingAccept.map((t) =>
+                  TransferTile(key: ValueKey(t.transferId), transfer: t)),
             ],
 
             // Active transfers
             if (transferring.isNotEmpty) ...[
               _sectionTitle(context, 'Active Transfers'),
-              ...transferring.map((t) => TransferTile(transfer: t)),
+              ...transferring.map((t) =>
+                  TransferTile(key: ValueKey(t.transferId), transfer: t)),
             ],
 
             // Recently finished
             if (recent.isNotEmpty) ...[
               _sectionTitle(context, 'Recent'),
-              ...recent.map((t) => TransferTile(transfer: t)),
+              ...recent.map((t) =>
+                  TransferTile(key: ValueKey(t.transferId), transfer: t)),
             ],
 
             // Known (trusted) devices
@@ -113,13 +123,13 @@ class _HomePageState extends ConsumerState<HomePage> {
 
             // Nearby (discovered) devices
             _sectionTitle(context, 'Nearby Devices'),
-            if (peers.isEmpty)
+            if (nearbyPeers.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(32),
                 child: Center(child: Text('Scanning for devices...')),
               )
             else
-              ...peers.map((peer) => _PeerTile(
+              ...nearbyPeers.map((peer) => _PeerTile(
                     peer: peer,
                     onSend: () => _navigateToSend(peer.deviceFingerprint,
                         name: peer.deviceName),

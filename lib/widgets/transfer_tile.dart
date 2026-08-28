@@ -31,7 +31,14 @@ class _TransferTileState extends ConsumerState<TransferTile> {
   @override
   void didUpdateWidget(TransferTile oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.transfer.state != oldWidget.transfer.state) _maybeStartCountdown();
+    // When a different transfer reuses this widget slot (the list is keyed by
+    // transferId, so this only fires defensively), discard any leftover
+    // countdown so the new transfer gets its own full 5s window.
+    if (widget.transfer.transferId != oldWidget.transfer.transferId) {
+      _timer?.cancel();
+      _countdown = -1;
+    }
+    _maybeStartCountdown();
   }
 
   @override
@@ -126,14 +133,22 @@ class _TransferTileState extends ConsumerState<TransferTile> {
           IconButton(
             icon: const Icon(Icons.close, color: Colors.red),
             tooltip: 'Reject',
-            onPressed: () =>
-                ref.read(activeTransfersProvider.notifier).reject(t.transferId),
+            onPressed: () async {
+              final error = await ref
+                  .read(activeTransfersProvider.notifier)
+                  .reject(t.transferId);
+              if (error != null && mounted) _showActionError(error);
+            },
           ),
           IconButton(
             icon: const Icon(Icons.check, color: Colors.green),
             tooltip: 'Accept',
-            onPressed: () =>
-                ref.read(activeTransfersProvider.notifier).accept(t.transferId),
+            onPressed: () async {
+              final error = await ref
+                  .read(activeTransfersProvider.notifier)
+                  .accept(t.transferId);
+              if (error != null && mounted) _showActionError(error);
+            },
           ),
         ],
       ),
@@ -240,7 +255,15 @@ class _TransferTileState extends ConsumerState<TransferTile> {
       leading: const Icon(Icons.cancel, color: Colors.grey),
       title: const Text('Transfer cancelled'),
       subtitle: Text(t.peerName ?? ''),
+      trailing: _countdown > 0
+          ? Text('$_countdown', style: TextStyle(color: Colors.grey.shade500))
+          : null,
     );
+  }
+
+  void _showActionError(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _directionIcon(String direction) => direction == 'send' ? '↑' : '↓';

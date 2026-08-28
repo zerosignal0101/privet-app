@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -14,7 +13,6 @@ import '../providers/settings.dart';
 import '../services/android/content_uri_dir_helper.dart';
 import '../services/android/content_uri_helper.dart';
 import '../services/clipboard_service.dart';
-import '../services/ipc/events.dart';
 import '../state/daemon_state.dart';
 import '../utils/format.dart';
 import '../widgets/file_tree_view.dart';
@@ -69,6 +67,11 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Each open is a fresh intent: clear whatever a previous page left in the
+      // (app-level) provider so initialParams actually apply. Otherwise the
+      // guard `s.entries.isEmpty` / `s.peerFingerprint == null` below skips the
+      // preloaded files and peer (e.g. after a completed send).
+      ref.read(sendPreparationProvider.notifier).reset();
       _initFromParams();
     });
   }
@@ -165,33 +168,6 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
             onEnterTheirCode: () => _enterTheirCodeFor(state.peerFingerprint!),
           ),
 
-        if (state.sending)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2)),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text('Starting transfer...',
-                      style: TextStyle(color: Colors.grey)),
-                ),
-                TextButton.icon(
-                  onPressed: () {
-                    ref.read(sendPreparationProvider.notifier).setSending(false);
-                  },
-                  icon: const Icon(Icons.stop, size: 16, color: Colors.red),
-                  label: const Text('Stop',
-                      style: TextStyle(color: Colors.red, fontSize: 12)),
-                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                ),
-              ],
-            ),
-          ),
-
         if (state.error != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
@@ -235,7 +211,7 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
         _BottomBar(
           fileCount: state.rootPaths.length,
           sending: state.sending,
-          onSend: state.isReady ? () => _send(context, ref) : null,
+          onSend: state.isReady ? () => _send(ref) : null,
         ),
       ],
     );
@@ -584,41 +560,15 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
   // Send
   // -------------------------------------------------------------------------
 
-  Future<void> _send(BuildContext context, WidgetRef ref) async {
+  Future<void> _send(WidgetRef ref) async {
     final notifier = ref.read(sendPreparationProvider.notifier);
     final id = await notifier.send();
     if (id == null) return; // error already surfaced in state
     if (!mounted) return;
-
-    notifier.setSending(true);
-    final service = ref.read(daemonStateProvider).service;
-    if (service == null) {
-      notifier.setSending(false);
-      return;
-    }
-
-    late final StreamSubscription<PrivetEvent> sub;
-    sub = service.events.listen((event) {
-      if (event is TransferCompletedEvent && event.transferId == id) {
-        sub.cancel();
-        notifier.setSending(false);
-        if (!context.mounted) return;
-        Navigator.of(context).popUntil((r) => r.isFirst);
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Transfer complete')));
-      } else if (event is TransferFailedEvent && event.transferId == id) {
-        sub.cancel();
-        notifier.setSending(false);
-        if (mounted) {
-          _showSnackBar('Transfer failed: ${event.errorCode}',
-              duration: const Duration(seconds: 3));
-        }
-      } else if (event is TransferCancelledEvent && event.transferId == id) {
-        sub.cancel();
-        notifier.setSending(false);
-        if (mounted) _showSnackBar('Transfer cancelled');
-      }
-    });
+    // The transfer is queued — go back to Home immediately and let the transfer
+    // tile report progress. The send page has no sending state.
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    notifier.clearFiles();
   }
 }
 

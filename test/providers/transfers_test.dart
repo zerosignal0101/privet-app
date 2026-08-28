@@ -10,22 +10,40 @@ void main() {
     return container.read(activeTransfersProvider.notifier);
   }
 
-  test('transfer lifecycle: preparing -> offered -> progress -> completed',
-      () {
+  test('incoming offer lifecycle: offered -> progress -> completed', () {
     final n = fresh();
-    n.applyEvent(TransferPreparingEvent(1, 't-1'));
-    expect(n.state['t-1']!.state, TransferState.preparing);
-
-    n.applyEvent(TransferOfferedEvent(2, 't-1', 3, 300));
+    // A receiver never gets `transfer_preparing` first — only the offer.
+    n.applyEvent(TransferOfferedEvent(1, 't-1', 3, 300));
     expect(n.state['t-1']!.isAwaitingAccept, isTrue);
     expect(n.state['t-1']!.direction, 'receive');
 
-    n.applyEvent(TransferProgressEvent(3, 't-1', 150, 300));
+    n.applyEvent(TransferProgressEvent(2, 't-1', 150, 300));
     expect(n.state['t-1']!.state, TransferState.transferring);
     expect(n.state['t-1']!.fraction, closeTo(0.5, 0.001));
 
-    n.applyEvent(TransferCompletedEvent(4, 't-1'));
+    n.applyEvent(TransferCompletedEvent(3, 't-1'));
     expect(n.state['t-1']!.state, TransferState.completed);
+  });
+
+  test(
+      'sender-side transfer_offered keeps the send direction and is not '
+      'awaiting accept', () {
+    final n = fresh();
+    // A send: transfer_preparing creates the tile, then the sender daemon
+    // echoes transfer_offered once its offer reaches the remote receiver.
+    n.applyEvent(TransferPreparingEvent(1, 't-send'));
+    n.applyEvent(TransferOfferedEvent(2, 't-send', 2, 200));
+
+    final t = n.state['t-send']!;
+    expect(t.direction, 'send');
+    expect(t.isAwaitingAccept, isFalse);
+    expect(t.state, TransferState.preparing);
+    expect(t.totalBytes, 200);
+
+    // Progress on a send keeps the send direction (not treated as receive).
+    n.applyEvent(TransferProgressEvent(3, 't-send', 100, 200));
+    expect(n.state['t-send']!.direction, 'send');
+    expect(n.state['t-send']!.state, TransferState.transferring);
   });
 
   test('failed transfer surfaces the daemon error and retryability', () {

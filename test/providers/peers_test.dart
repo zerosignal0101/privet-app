@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:privet_app/providers/peers.dart';
+import 'package:privet_app/state/daemon_state.dart';
 
 import '../support/test_daemon.dart';
 
@@ -87,6 +88,59 @@ void main() {
     }));
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(daemon.container.read(peerListProvider), hasLength(1));
+  });
+
+  test('scan results never include the device itself', () async {
+    final daemon = await bootTestDaemon(_script({
+      'list_peers': (id) => _ok(id, 'peers', [
+            {
+              'device_fingerprint': 'fp', // our own fingerprint (self beacon)
+              'device_name': 'me',
+              'state': 'seen',
+              'last_beacon_ms': 0,
+              'candidates': <dynamic>[],
+            },
+            {
+              'device_fingerprint': 'fp1',
+              'device_name': 'desk',
+              'state': 'seen',
+              'last_beacon_ms': 0,
+              'candidates': <dynamic>[],
+            },
+          ]),
+    }));
+    addTearDown(daemon.dispose);
+
+    final n = daemon.container.read(peerListProvider.notifier);
+    // Resolve daemon status first so the provider knows its own fingerprint.
+    await daemon.container.read(daemonStatusProvider.future);
+    await n.refresh();
+
+    final afterRefresh = daemon.container.read(peerListProvider);
+    expect(afterRefresh, hasLength(1));
+    expect(afterRefresh.single.deviceFingerprint, 'fp1');
+
+    // A live discovery for our own fingerprint is dropped too.
+    daemon.transport.inject(_msg('event', {
+      'sequence': 1,
+      'event': {
+        'name': 'device_discovered',
+        'data': {'device_fingerprint': 'fp', 'device_name': 'me'},
+      },
+    }));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(daemon.container.read(peerListProvider), hasLength(1));
+
+    // A real peer is still added.
+    daemon.transport.inject(_msg('event', {
+      'sequence': 2,
+      'event': {
+        'name': 'device_discovered',
+        'data': {'device_fingerprint': 'fp2', 'device_name': 'phone'},
+      },
+    }));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(daemon.container.read(peerListProvider), hasLength(2));
   });
 
   test('identity and trusted providers read through the service', () async {

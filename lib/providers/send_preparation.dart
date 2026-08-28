@@ -145,6 +145,12 @@ class SendPreparationNotifier extends Notifier<SendPreparationState> {
     state = state.copyWith(entries: [], rootPaths: []);
   }
 
+  /// Drop the whole selection (files, peer, in-flight send). The send page
+  /// resets on open so a fresh intent never inherits a previous page's state.
+  void reset() {
+    state = const SendPreparationState();
+  }
+
   void setPeer(String fingerprint, {String? name}) {
     state = state.copyWith(peerFingerprint: fingerprint, peerName: name);
   }

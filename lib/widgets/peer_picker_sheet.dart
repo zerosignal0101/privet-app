@@ -38,6 +38,10 @@ class _PeerPickerSheetState extends ConsumerState<PeerPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final peers = ref.watch(peerListProvider);
+    // The daemon can discover this device itself; never offer "us" as a target.
+    final identityFp = ref.watch(identityProvider).value?.deviceFingerprint;
+    final nearbyPeers =
+        peers.where((p) => p.deviceFingerprint != identityFp).toList();
 
     return SafeArea(
       child: Padding(
@@ -70,13 +74,13 @@ class _PeerPickerSheetState extends ConsumerState<PeerPickerSheet> {
               subtitle: const Text('Re-scan the local network'),
               onTap: () => ref.read(peerListProvider.notifier).refresh(),
             ),
-            if (peers.isNotEmpty) ...[
+            if (nearbyPeers.isNotEmpty) ...[
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
                 child: Text('Nearby Devices',
                     style: TextStyle(fontSize: 12, color: Colors.grey)),
               ),
-              ...peers.map((peer) => ListTile(
+              ...nearbyPeers.map((peer) => ListTile(
                     leading: const Icon(Icons.devices, size: 20),
                     title:
                         Text(peer.deviceName, style: const TextStyle(fontSize: 14)),
@@ -92,7 +96,7 @@ class _PeerPickerSheetState extends ConsumerState<PeerPickerSheet> {
                     },
                   )),
             ],
-            if (peers.isEmpty)
+            if (nearbyPeers.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Center(

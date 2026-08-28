@@ -29,15 +29,25 @@ class PeerListNotifier extends Notifier<List<PeerDto>> {
     return const [];
   }
 
+  /// Best-effort self fingerprint from the cached daemon status. Null until the
+  /// status has been fetched; the UI also filters at render time with the
+  /// resolved identity, so this provider-level filter is defense in depth.
+  String? get _selfFingerprint =>
+      ref.read(daemonStatusProvider).value?.deviceFingerprint;
+
   Future<void> refresh() async {
     final service = ref.read(daemonStateProvider).service;
     if (service == null) return;
-    state = await service.peers();
+    final self = _selfFingerprint;
+    final peers = await service.peers();
+    state =
+        self == null ? peers : peers.where((p) => p.deviceFingerprint != self).toList();
   }
 
   void _onEvent(PrivetEvent event) {
     switch (event) {
       case DeviceDiscoveredEvent(:final deviceFingerprint, :final deviceName):
+        if (deviceFingerprint == _selfFingerprint) break; // our own beacon
         final existing =
             state.indexWhere((p) => p.deviceFingerprint == deviceFingerprint);
         if (existing >= 0) {
