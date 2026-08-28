@@ -126,3 +126,19 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
+
+# Install desktop file, icons, and AppStream metadata for desktop integration.
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/app.privet.privet_app.desktop"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/share/applications"
+  COMPONENT Runtime)
+
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/app.privet.privet_app.metainfo.xml"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/share/metainfo"
+  COMPONENT Runtime)
+
+foreach(icon_size 64 128 256 512)
+  install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/icons/privet_${icon_size}.png"
+    DESTINATION "${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/${icon_size}x${icon_size}/apps"
+    RENAME "${APPLICATION_ID}.png"
+    COMPONENT Runtime)
+endforeach()
