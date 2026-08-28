@@ -1,12 +1,18 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:privet_app/services/device_name.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const platform = MethodChannel('privet/platform');
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
   tearDown(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -51,15 +57,48 @@ void main() {
     expect(path, endsWith('privet${Platform.pathSeparator}config.json'));
   });
 
-  test('writeDesktopDeviceNameConfig emits a partial daemon config', () {
+  test('writeDesktopDeviceNameConfig emits a partial daemon config', () async {
     final dir = Directory.systemTemp.createTempSync('privet-name');
     addTearDown(() {
       if (dir.existsSync()) dir.deleteSync(recursive: true);
     });
-    final path = writeDesktopDeviceNameConfig(path: '${dir.path}/config.json');
+    final path =
+        await writeDesktopDeviceNameConfig(path: '${dir.path}/config.json');
     expect(path, isNotNull);
     final json = File(path!).readAsStringSync();
     expect(json, contains('"device_name"'));
     expect(json, contains(Platform.localHostname));
+  });
+
+  test('writeDesktopDeviceNameConfig prefers the persisted pref', () async {
+    final dir = Directory.systemTemp.createTempSync('privet-name');
+    addTearDown(() {
+      if (dir.existsSync()) dir.deleteSync(recursive: true);
+    });
+    SharedPreferences.setMockInitialValues({'device_name': 'my-laptop'});
+    final path =
+        await writeDesktopDeviceNameConfig(path: '${dir.path}/config.json');
+    final config = jsonDecode(File(path!).readAsStringSync());
+    expect(config['device_name'], 'my-laptop');
+  });
+
+  test('writeDesktopDeviceNameConfig preserves persisted runtime fields',
+      () async {
+    final dir = Directory.systemTemp.createTempSync('privet-name');
+    addTearDown(() {
+      if (dir.existsSync()) dir.deleteSync(recursive: true);
+    });
+    final target = '${dir.path}/config.json';
+    File(target).writeAsStringSync(jsonEncode({
+      'device_name': 'old-host',
+      'save_dir': r'D:\Downloads\privet',
+      'accept_all_trusted': true,
+    }));
+    SharedPreferences.setMockInitialValues({'device_name': 'new-name'});
+    final path = await writeDesktopDeviceNameConfig(path: target);
+    final config = jsonDecode(File(path!).readAsStringSync());
+    expect(config['device_name'], 'new-name');
+    expect(config['save_dir'], r'D:\Downloads\privet');
+    expect(config['accept_all_trusted'], isTrue);
   });
 }

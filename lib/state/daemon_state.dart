@@ -48,9 +48,9 @@ final daemonSupervisorProvider = Provider<DaemonSupervisor>((ref) {
   return DaemonSupervisor(
     endpoint: endpoint,
     executablePath: bin,
-    // Desktop: a minimal config (device_name only) so the daemon announces the
-    // host name; Android writes its own config via androidSupervisor().
-    configPath: writeDesktopDeviceNameConfig(),
+    // The daemon config is written (device name + any persisted runtime
+    // settings) in DaemonStateNotifier.start before the daemon is spawned.
+    configPath: desktopConfigPath(),
   );
 });
 
@@ -74,6 +74,12 @@ class DaemonStateNotifier extends Notifier<DaemonSnapshot> {
       final supervisor = Platform.isAndroid
           ? await androidSupervisor()
           : ref.read(daemonSupervisorProvider);
+      // Write the daemon config before spawning so discovery announces the
+      // configured device name (persisted "App Device Name" wins over the host).
+      // Test stubs carry no config path, so this is a no-op for them.
+      if (!Platform.isAndroid && supervisor.configPath != null) {
+        await writeDesktopDeviceNameConfig();
+      }
       final service = await supervisor.ensureRunning();
       // Pin the process so the daemon outlives UI backgrounding (Android only).
       if (Platform.isAndroid) await startForegroundService();

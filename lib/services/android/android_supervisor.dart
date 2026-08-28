@@ -16,7 +16,7 @@ const _daemonChannel = MethodChannel('privet/daemon');
 /// answers. Used by [DaemonStateNotifier.start] when running on Android.
 Future<DaemonSupervisor> androidSupervisor() async {
   final bundle = await AndroidDaemonBundle.resolve(
-    deviceName: await resolveDefaultDeviceName(),
+    deviceName: await resolveConfiguredDeviceName(),
   );
   final config = await bundle.writeConfig();
   // The in-process daemon creates its own data/save dirs; the app pre-creates

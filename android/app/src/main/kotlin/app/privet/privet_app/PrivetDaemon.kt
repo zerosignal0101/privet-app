@@ -2,7 +2,6 @@ package app.privet.privet_app
 
 import android.content.Context
 import android.os.Build
-import android.os.Environment
 import android.util.Log
 import org.json.JSONObject
 import java.io.File
@@ -68,7 +67,10 @@ object PrivetDaemon {
         if (file.exists()) return
         file.parentFile?.mkdirs()
         val dataDir = File(context.filesDir, "privet/data").path
-        val saveDir = File(Environment.getExternalStorageDirectory(), "Privet").path
+        // Default save dir must match Dart's `AndroidDaemonBundle.saveDir`
+        // (path_provider's getExternalStorageDirectory() -> getExternalFilesDir),
+        // not the public storage root: the daemon can't create /storage/emulated/0.
+        val saveDir = File(context.getExternalFilesDir(null) ?: context.filesDir, "Privet").path
         val deviceName = "${Build.MANUFACTURER} ${Build.MODEL}".trim()
             .ifEmpty { "privet-device" }
         val config = JSONObject()

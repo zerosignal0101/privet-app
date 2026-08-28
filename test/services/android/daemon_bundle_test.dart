@@ -35,6 +35,66 @@ void main() {
     expect(cfg['data_dir'], endsWith('privet/data'));
   });
 
+  test('writeConfig preserves daemon-persisted runtime fields', () async {
+    final tmp = await tempDir();
+    final bundle = AndroidDaemonBundle(
+      appFilesDir: tmp.path,
+      externalFilesDir: '${tmp.path}/ext',
+    );
+    // Simulate a previous run: the daemon persisted a user-chosen save dir plus
+    // runtime toggles back into config.json via persist_config.
+    File(bundle.configPath).parent.createSync(recursive: true);
+    File(bundle.configPath).writeAsStringSync(jsonEncode({
+      'device_name': 'old-model',
+      'data_dir': '${tmp.path}/privet/data',
+      'save_dir': '/storage/emulated/0/Download/Privet',
+      'ipc_endpoint': bundle.socketPath,
+      'quic_port': 47808,
+      'tcp_port': 47808,
+      'discovery_port': 47809,
+      'accept_all_trusted': true,
+      'collision_policy': 'overwrite',
+    }));
+    await bundle.writeConfig();
+    final cfg = jsonDecode(await File(bundle.configPath).readAsString())
+        as Map<String, dynamic>;
+    // The user's save directory survives a restart...
+    expect(cfg['save_dir'], '/storage/emulated/0/Download/Privet');
+    // ...and so do the other daemon-persisted toggles.
+    expect(cfg['accept_all_trusted'], isTrue);
+    expect(cfg['collision_policy'], 'overwrite');
+  });
+
+  test('writeConfig refreshes app-owned structural keys', () async {
+    final tmp = await tempDir();
+    final bundle = AndroidDaemonBundle(
+      appFilesDir: tmp.path,
+      externalFilesDir: '${tmp.path}/ext',
+      deviceName: 'my-phone',
+    );
+    File(bundle.configPath).parent.createSync(recursive: true);
+    File(bundle.configPath).writeAsStringSync(jsonEncode({
+      'device_name': 'stale-name',
+      'data_dir': '/stale/data',
+      'save_dir': '/storage/emulated/0/Download/Privet',
+      'ipc_endpoint': '/stale/privet.sock',
+      'quic_port': 9999,
+      'tcp_port': 9999,
+      'discovery_port': 9999,
+    }));
+    await bundle.writeConfig();
+    final cfg = jsonDecode(await File(bundle.configPath).readAsString())
+        as Map<String, dynamic>;
+    // The device name and structural paths/ports are re-forced fresh...
+    expect(cfg['device_name'], 'my-phone');
+    expect(cfg['data_dir'], endsWith('privet/data'));
+    expect(cfg['ipc_endpoint'], bundle.socketPath);
+    expect(cfg['quic_port'], 47808);
+    expect(cfg['discovery_port'], 47809);
+    // ...while the persisted save dir is untouched.
+    expect(cfg['save_dir'], '/storage/emulated/0/Download/Privet');
+  });
+
   test('encodeDaemonConfig is deterministic and addressable', () {
     final cfg = jsonDecode(encodeDaemonConfig(
       deviceName: 'phone',

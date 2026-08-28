@@ -89,6 +89,9 @@ class SettingsNotifier extends Notifier<Settings> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('device_name', name);
     state = state.copyWith(deviceName: name);
+    // Apply the name to the daemon: the config write picks up the pref on the
+    // next start, so restart to make discovery announce it right away.
+    await ref.read(daemonStateProvider.notifier).restart();
   }
 
   Future<void> setSaveDir(String dir) async {

@@ -1,9 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart' show MethodChannel;
 import 'package:path_provider/path_provider.dart';
-
-import 'daemon_config.dart';
 
 const _daemonServiceChannel = MethodChannel('privet/daemon_service');
 
@@ -45,19 +44,31 @@ class AndroidDaemonBundle {
   String get saveDir => '$externalFilesDir/Privet';
 
   /// Writes the daemon config and returns its path.
+  ///
+  /// Merges into the existing file instead of rewriting it from scratch: the
+  /// daemon persists runtime settings (`save_dir`, `accept_all_trusted`,
+  /// `collision_policy`, `pairing`) back into this same config.json via
+  /// `persist_config`, so a fresh config on every start would discard the user's
+  /// saved save directory and policy choices on the next launch. Only the
+  /// app-owned structural keys are forced (device name + sandbox paths/ports);
+  /// daemon-owned values already on disk win, and `save_dir` defaults to the
+  /// app's external dir only when nothing was persisted yet.
   Future<String> writeConfig() async {
     final dir = Directory(_privetDir);
     await dir.create(recursive: true);
     final file = File(configPath);
-    await file.writeAsString(
-      encodeDaemonConfig(
-        deviceName: deviceName,
-        dataDir: '$_privetDir/data',
-        saveDir: saveDir,
-        socketPath: socketPath,
-      ),
-      flush: true,
-    );
+    final Map<String, dynamic> config = file.existsSync()
+        ? (jsonDecode(await file.readAsString()) as Map<String, dynamic>)
+        : <String, dynamic>{};
+    config
+      ..['device_name'] = deviceName
+      ..['data_dir'] = '$_privetDir/data'
+      ..['ipc_endpoint'] = socketPath
+      ..['quic_port'] = 47808
+      ..['tcp_port'] = 47808
+      ..['discovery_port'] = 47809;
+    config.putIfAbsent('save_dir', () => saveDir);
+    await file.writeAsString(jsonEncode(config), flush: true);
     return file.path;
   }
 
