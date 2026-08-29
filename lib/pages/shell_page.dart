@@ -40,8 +40,6 @@ class ShellPage extends ConsumerStatefulWidget {
 
 class _ShellPageState extends ConsumerState<ShellPage> {
   StreamSubscription<ParsedPairingUrl>? _deeplinkSub;
-  StreamSubscription<PendingShareData>? _shareSub;
-  ShareService? _shareService;
 
   @override
   void initState() {
@@ -54,24 +52,45 @@ class _ShellPageState extends ConsumerState<ShellPage> {
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final share = ShareService();
-      _shareService = share;
-      _shareSub = share.shares.listen(_handleShareData);
-      share.start();
+      // A share can arrive before this shell mounts (e.g. while the daemon
+      // spinner was up). The app root routes it into pendingShareProvider,
+      // which survives this rebuild — open it now that we're on screen.
+      _checkPendingShare();
     });
   }
 
   @override
   void dispose() {
     _deeplinkSub?.cancel();
-    _shareSub?.cancel();
-    _shareService?.dispose();
     super.dispose();
   }
 
-  /// Turns an incoming share into the send preparation page. File paths are
+  /// Opens the send preparation page for a share held in [pendingShareProvider].
+  /// Safe to call from build (ref.listen) and from the post-frame mount check.
+  void _openSendPreparation(PendingShareData data) {
+    // Clear immediately so it won't re-trigger via ref.listen or a later
+    // resume pull.
+    ref.read(pendingShareProvider.notifier).clear();
+    // Consume any native-side pending data so a later resume pull is a no-op
+    // (the onNewIntent push path doesn't clear the native stash).
+    ShareService.consumePending();
+    // This may be reached during build (ref.listen); defer the navigation.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _navigateToSendPreparation(data);
+    });
+  }
+
+  /// Called after this shell mounts (first frame) in case a share arrived
+  /// while the shell wasn't on screen (daemon startup spinner).
+  void _checkPendingShare() {
+    final data = ref.read(pendingShareProvider);
+    if (data != null) _openSendPreparation(data);
+  }
+
+  /// Turns a share payload into the send preparation page. File paths are
   /// already cached by the native side; shared text is written to a temp file.
-  Future<void> _handleShareData(PendingShareData data) async {
+  Future<void> _navigateToSendPreparation(PendingShareData data) async {
     final entries = <SendFileEntry>[];
     for (final path in data.paths) {
       final file = File(path);
@@ -112,6 +131,13 @@ class _ShellPageState extends ConsumerState<ShellPage> {
   @override
   Widget build(BuildContext context) {
     final index = ref.watch(shellTabProvider);
+    // A pending share (pushed while running, or pulled on cold start) is held
+    // in pendingShareProvider by the app root; open the send preparation page
+    // when it becomes non-null. Shares arriving before this shell mounted are
+    // picked up by _checkPendingShare in initState.
+    ref.listen<PendingShareData?>(pendingShareProvider, (prev, data) {
+      if (data != null) _openSendPreparation(data);
+    });
     return Scaffold(
       body: IndexedStack(
         index: index,

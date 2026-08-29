@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show AppExitResponse;
 
 import 'package:flutter/foundation.dart'
@@ -7,6 +8,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'pages/shell_page.dart';
+import 'providers/pending_share.dart';
+import 'services/share_service.dart';
 import 'state/daemon_state.dart';
 
 /// Native → Dart: the Windows runner intercepts WM_CLOSE here because the
@@ -29,10 +32,19 @@ class PrivetApp extends ConsumerStatefulWidget {
 
 class _PrivetAppState extends ConsumerState<PrivetApp> {
   late final AppLifecycleListener _lifecycleListener;
+  ShareService? _shareService;
+  StreamSubscription<PendingShareData>? _shareSub;
 
   @override
   void initState() {
     super.initState();
+    // Registers the privet/share handler and pulls the cold-start stash into
+    // pendingShareProvider. This lives at the app root, not the shell: the
+    // shell is unmounted while the daemon starts (a spinner is shown), so a
+    // pull owned by the shell would complete after the shell is disposed and
+    // the pending share would be lost — the app would open on the home tab
+    // instead of the send preparation page.
+    _initShareHandling();
     // macOS/Linux (and any engine that supports cancelable exit): the close
     // request arrives through onExitRequested. On Windows this never fires
     // (engine reverted WM_CLOSE interception), so the runner intercepts the
@@ -46,11 +58,38 @@ class _PrivetAppState extends ConsumerState<PrivetApp> {
         await ref.read(daemonStateProvider.notifier).stopUnlessLeavingRunning();
         return AppExitResponse.exit;
       },
+      onStateChange: (state) {
+        // Foreground — pull any share data that was waiting. The onShare push
+        // fires from onNewIntent while the app is running; this is the robust
+        // fallback for a share that landed before the handler was ready (e.g.
+        // while the daemon spinner was up on cold start).
+        if (state == AppLifecycleState.resumed) {
+          _shareService?.pull();
+        }
+      },
     );
     _windowChannel.setMethodCallHandler(_onWindowClose);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(daemonStateProvider.notifier).start();
     });
+  }
+
+  /// Registers the `privet/share` handler and pulls any pending share into
+  /// [pendingShareProvider], which survives ShellPage rebuilds.
+  void _initShareHandling() {
+    final share = ShareService();
+    _shareService = share;
+    _shareSub = share.shares.listen(_handleShareData);
+    share.start();
+  }
+
+  /// Route an incoming share (onShare push or getPendingShare pull) into
+  /// [pendingShareProvider]; the shell navigates when it observes a non-null
+  /// value (and on mount via _checkPendingShare).
+  void _handleShareData(PendingShareData data) {
+    if (!data.isEmpty) {
+      ref.read(pendingShareProvider.notifier).set(data);
+    }
   }
 
   /// Native window close (Windows runner): stop the daemon unless the user
@@ -69,6 +108,8 @@ class _PrivetAppState extends ConsumerState<PrivetApp> {
   @override
   void dispose() {
     _windowChannel.setMethodCallHandler(null);
+    _shareSub?.cancel();
+    _shareService?.dispose();
     _lifecycleListener.dispose();
     super.dispose();
   }

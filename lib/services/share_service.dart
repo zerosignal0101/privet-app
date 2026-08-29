@@ -39,6 +39,18 @@ class ShareService {
     }
   }
 
+  /// Consume any pending share the native side is holding without re-delivering
+  /// it. Called after a share has been opened so a later resume pull won't
+  /// replay the same payload (the onNewIntent push path doesn't clear the
+  /// native stash).
+  static Future<void> consumePending() async {
+    try {
+      await _channel.invokeMethod('getPendingShare');
+    } catch (_) {
+      // Channel not available on this platform.
+    }
+  }
+
   void dispose() {
     _shares.close();
   }
