@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/ipc/events.dart';
@@ -61,6 +62,21 @@ class ActiveTransfersNotifier extends Notifier<Map<String, ActiveTransfer>> {
   StreamSubscription<PrivetEvent>? _sub;
   Timer? _reconcileTimer;
   final Map<String, DateTime> _suspectSince = {};
+  final Map<String, DateTime> _lastEvent = {};
+
+  /// A transferring/reconnecting tile that has received NO event for this long
+  /// is presumed stale. The daemon's progress tick is ~1s, so total silence far
+  /// beyond that means the transfer's events stopped reaching the GUI (dead IPC
+  /// connection, dropped terminal event) — the tile must not pin 0% forever.
+  /// Only the *state* counts here: the daemon's active_transfers check handles
+  /// the healthy-but-not-yet-unregistered case.
+  static final Duration stuckTimeout = const Duration(seconds: 45);
+
+  /// Time source for the silence self-heal. Injectable so tests can pin the
+  /// clock (fake-async pumping does not advance `DateTime.now()`).
+  @visibleForTesting
+  DateTime Function() clock = DateTime.now;
+
   bool _reconciling = false;
 
   /// Whether the daemon is in "Accept All Trusted" mode. When on, incoming
@@ -108,11 +124,16 @@ class ActiveTransfersNotifier extends Notifier<Map<String, ActiveTransfer>> {
   Future<void> _reconcileActive() async {
     if (_reconciling) return;
     _reconciling = true;
+    final now = clock();
     try {
       final service = ref.read(daemonStateProvider).service;
-      if (service == null) return;
+      if (service == null) {
+        // No daemon at all — nothing to reconcile against; rely on the silence
+        // self-heal so a stale tile can still not linger forever.
+        _reconcileStuck(now);
+        return;
+      }
       final active = (await service.status()).activeTransfers.toSet();
-      final now = DateTime.now();
       final stale = <String>[];
       for (final entry in state.entries) {
         final t = entry.value;
@@ -134,23 +155,54 @@ class ActiveTransfersNotifier extends Notifier<Map<String, ActiveTransfer>> {
           stale.add(t.transferId);
         }
       }
-      if (stale.isNotEmpty) {
-        final next = Map<String, ActiveTransfer>.from(state);
-        for (final id in stale) {
-          next.remove(id);
-          _suspectSince.remove(id);
-        }
-        state = next;
-      }
+      _remove(stale);
     } catch (_) {
-      // Daemon unreachable — skip this cycle; the transfer stays until it
-      // either terminates or a later reconcile succeeds.
+      // Daemon unreachable (dead client, socket closed, …). We can't ask whether
+      // the transfer is still active, so fall back to the time-based self-heal:
+      // a tile that has received no event at all for `stuckTimeout` is stale and
+      // must not pin a 0% tile forever. Without this, a missed terminal event on
+      // a dead IPC connection left the tile on screen indefinitely.
+      _reconcileStuck(now);
     } finally {
       _reconciling = false;
     }
   }
 
+  /// Removes transferring/reconnecting tiles that have had no event for
+  /// [stuckTimeout]. Runs even when the daemon is unreachable. A healthy
+  /// transfer emits progress at least every second, so total silence far beyond
+  /// that is not a slow transfer — it is a transfer whose events stopped
+  /// reaching the GUI. Paused/awaiting-accept/preparing tiles are exempt:
+  /// silence there is legitimate (waiting for the user or the peer).
+  void _reconcileStuck(DateTime now) {
+    final stale = <String>[];
+    for (final entry in state.entries) {
+      final t = entry.value;
+      if (t.state != TransferState.transferring &&
+          t.state != TransferState.reconnecting) {
+        continue;
+      }
+      final last = _lastEvent[t.transferId];
+      if (last != null && now.difference(last) >= stuckTimeout) {
+        stale.add(t.transferId);
+      }
+    }
+    _remove(stale);
+  }
+
+  void _remove(List<String> stale) {
+    if (stale.isEmpty) return;
+    final next = Map<String, ActiveTransfer>.from(state);
+    for (final id in stale) {
+      next.remove(id);
+      _suspectSince.remove(id);
+      _lastEvent.remove(id);
+    }
+    state = next;
+  }
+
   void applyEvent(PrivetEvent event) {
+    _touch(event);
     switch (event) {
       case TransferPreparingEvent(:final transferId):
         state = {
@@ -275,6 +327,26 @@ class ActiveTransfersNotifier extends Notifier<Map<String, ActiveTransfer>> {
     }
   }
 
+  /// Records the moment this transfer last produced an event, so the silence
+  /// self-heal can tell "still flowing" from "events stopped arriving".
+  void _touch(PrivetEvent event) {
+    final String? id = switch (event) {
+      TransferPreparingEvent(:final transferId) ||
+      TransferPreparingProgressEvent(:final transferId) ||
+      TransferOfferedEvent(:final transferId) ||
+      TransferProgressEvent(:final transferId) ||
+      TransferReconnectingEvent(:final transferId) ||
+      TransferResumedEvent(:final transferId) ||
+      TransferPausedEvent(:final transferId) ||
+      TransferCompletedEvent(:final transferId) ||
+      TransferCancelledEvent(:final transferId) ||
+      TransferFailedEvent(:final transferId) =>
+        transferId,
+      _ => null,
+    };
+    if (id != null) _lastEvent[id] = DateTime.now();
+  }
+
   /// Copy an existing transfer with a new state (keeps counts + peer name).
   ActiveTransfer _withState(ActiveTransfer cur, TransferState st) =>
       ActiveTransfer(
@@ -321,6 +393,7 @@ class ActiveTransfersNotifier extends Notifier<Map<String, ActiveTransfer>> {
   void remove(String transferId) {
     state = Map<String, ActiveTransfer>.from(state)..remove(transferId);
     _suspectSince.remove(transferId);
+    _lastEvent.remove(transferId);
   }
 
   /// Accepts an incoming offer. Returns null on success, or a message the UI

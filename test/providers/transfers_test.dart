@@ -128,4 +128,120 @@ void main() {
     expect(t.isAwaitingAccept, isFalse);
     expect(t.state, TransferState.transferring);
   });
+
+  test('auto-accepted receive resolves via the wire (offered -> progress -> completed)',
+      () async {
+    final daemon = await bootTestDaemon(scriptFromHandlers({
+      'get_runtime_config': (id, _) => okResponse(id, 'runtime_config', {
+        'accept_all_trusted': true,
+        'collision_policy': 'rename',
+        'save_dir': r'C:\received',
+      }),
+    }));
+    addTearDown(daemon.dispose);
+
+    final n = daemon.container.read(activeTransfersProvider.notifier);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    daemon.transport.inject(_event(1, 'runtime_config_changed', {
+      'accept_all_trusted': true,
+      'collision_policy': 'rename',
+      'save_dir': r'C:\received',
+    }));
+    daemon.transport.inject(_event(2, 'transfer_offered', {
+      'transfer_id': 't-wire',
+      'file_count': 2,
+      'total_bytes': 400,
+    }));
+    daemon.transport.inject(_event(3, 'transfer_progress', {
+      'transfer_id': 't-wire',
+      'verified_bytes': 200,
+      'total_bytes': 400,
+    }));
+    daemon.transport.inject(_event(4, 'transfer_completed', {
+      'transfer_id': 't-wire',
+    }));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    final t = n.state['t-wire'];
+    expect(t, isNotNull, reason: 'offer must create the receive tile');
+    expect(t!.state, TransferState.completed,
+        reason: 'the terminal event must reach the notifier over the wire');
+  });
+
+  testWidgets(
+      'a transferring tile that went silent is self-healed even when the daemon '
+      'is unreachable', (tester) async {
+    // The daemon answers the connect handshake and boot-time config, but every
+    // get_status AFTER connect fails — simulating a dead IPC connection, the
+    // case where a missed terminal event previously left a 0% tile forever
+    // ("can't cancel, doesn't disappear").
+    var statusCalls = 0;
+    final daemon = await bootTestDaemon((requests) => requests.map((req) {
+          final id = req['request_id'] as String;
+          final request = req['request'] as Map<String, dynamic>;
+          final method = request['method'] as String;
+          switch (method) {
+            case 'get_status':
+              statusCalls++;
+              if (statusCalls > 1) {
+                return serverMessage('response', {
+                  'request_id': id,
+                  'payload': null,
+                  'error': {'code': 'closed', 'message': 'client is not connected'},
+                });
+              }
+              return statusResponse(id);
+            case 'subscribe_events':
+              return okResponse(id, 'event_replay',
+                  {'events': <dynamic>[], 'oldest_available': null, 'latest': 0});
+            case 'get_runtime_config':
+              return okResponse(id, 'runtime_config', {
+                'accept_all_trusted': true,
+                'collision_policy': 'rename',
+                'save_dir': r'C:\received',
+              });
+            default:
+              throw StateError('unexpected method: $method');
+          }
+        }).toList());
+
+    final n = daemon.container.read(activeTransfersProvider.notifier);
+    // Pin the clock so the silence window can be advanced deterministically.
+    var fakeNow = DateTime.now();
+    n.clock = () => fakeNow;
+    await tester.pump(const Duration(milliseconds: 50));
+
+    // Auto-accepted receive offer -> transferring tile at 0% (the reported bug
+    // shape: a tile that never advances because its events never arrive).
+    n.applyEvent(TransferOfferedEvent(1, 't-stuck', 1, 100));
+    expect(n.state['t-stuck']!.state, TransferState.transferring);
+
+    // No further events arrive. The daemon is unreachable (get_status fails) so
+    // the active-transfers reconcile can't prune the tile either. After the
+    // silence window the self-heal must clear it.
+    fakeNow = DateTime.now().add(const Duration(seconds: 60));
+    await tester.pump(const Duration(seconds: 11));
+    await tester.pump();
+
+    expect(n.state['t-stuck'], isNull,
+        reason: 'a tile silent past stuckTimeout must self-heal even when the '
+            'daemon is unreachable');
+
+    // Dispose within the body so the periodic reconcile timer is cancelled
+    // before the test framework's pending-timer invariant check.
+    daemon.dispose();
+  });
 }
+
+// --- transport-level: the full IPC delivery path (wire bytes -> client parser
+// -> notifier) must resolve an auto-accepted receive the same way applyEvent
+// does directly. This guards the `_onFrame` dedup/parsing path that a direct
+// applyEvent test bypasses. Regression for the phone-side stuck-0% tile: if the
+// wire events were dropped or mis-parsed after `transfer_offered`, the tile
+// would freeze at 0% and never terminate.
+Map<String, dynamic> _event(int seq, String name, Map<String, dynamic> data) =>
+    serverMessage('event', {
+      'sequence': seq,
+      'event': {'name': name, 'data': data},
+    });
