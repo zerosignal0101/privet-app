@@ -82,8 +82,23 @@ class PeerListNotifier extends Notifier<List<PeerDto>> {
   }
 }
 
-/// Pairing-completed peers (the daemon's trusted list).
+/// Every trust record the daemon keeps — trusted AND revoked. `list_trusted`
+/// deliberately returns revoked peers too (they stay for audit/history), and a
+/// revoked peer is only ever cleared by forgetting it (the daemon rejects a
+/// revoked peer's connections outright). The rest of the app shows just the
+/// still-trusted subset via [trustedListProvider]; Settings watches this one so
+/// a device that was banned can be forgotten again and re-paired.
+final allTrustedListProvider = FutureProvider<List<TrustedPeerDto>>((ref) async {
+  final service = ref.watch(daemonStateProvider).service;
+  return await service?.trusted() ?? const [];
+});
+
+/// Pairing-completed peers (the daemon's trusted list). The daemon's
+/// `list_trusted` keeps revoked peers in the trust store (they stay for
+/// history), so surface only records whose trust state is still `Trusted` —
+/// otherwise revoking a device (Settings → Remove Trust) never removes it.
 final trustedListProvider = FutureProvider<List<TrustedPeerDto>>((ref) async {
   final service = ref.watch(daemonStateProvider).service;
-  return service?.trusted() ?? const [];
+  final peers = await service?.trusted() ?? const [];
+  return peers.where((p) => p.trustState == 'Trusted').toList();
 });

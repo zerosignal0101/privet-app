@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/ipc/events.dart';
 import '../state/daemon_state.dart';
+import 'peers.dart';
 
 /// A peer that requested pairing and is waiting for the user to complete the
 /// code exchange.
@@ -35,10 +36,19 @@ class PairingNotifier extends Notifier<List<PairRequest>> {
           state = [...state, PairRequest(deviceFingerprint)];
         }
         break;
-      case PairingResultEvent(:final deviceFingerprint):
+      case PairingResultEvent(:final deviceFingerprint, :final success):
         state = state
             .where((p) => p.deviceFingerprint != deviceFingerprint)
             .toList();
+        // A successful pairing commits the peer to the daemon's trust store.
+        // The responder (e.g. a desktop accepting a scanned QR) only learns a
+        // pairing completed through this event, so refresh the trusted lists
+        // here — otherwise Trusted Devices / Known Devices stay stale until a
+        // daemon restart.
+        if (success) {
+          ref.invalidate(trustedListProvider);
+          ref.invalidate(allTrustedListProvider);
+        }
         break;
       default:
         break;

@@ -243,11 +243,28 @@ class _TransferTileState extends ConsumerState<TransferTile> {
     return ListTile(
       leading: const Icon(Icons.error, color: Colors.red),
       title: const Text('Transfer failed'),
-      subtitle: Text(t.errorCode ?? t.peerName ?? ''),
+      subtitle: Text(_friendlyError(t.errorCode, t.peerName)),
       trailing: _countdown > 0
           ? Text('$_countdown', style: TextStyle(color: Colors.grey.shade500))
           : null,
     );
+  }
+
+  /// Turns the daemon's error code into a readable message. The trust-related
+  /// codes tell the user *why* the transfer failed and what to do (re-pair)
+  /// instead of a bare "transfer"/"rejected" with no guidance.
+  String _friendlyError(String? code, String? peerName) {
+    if (code == null || code.isEmpty) return peerName ?? '';
+    return switch (code) {
+      'rejected' || 'peer_not_trusted' =>
+        'Peer no longer trusts you — pair again to send',
+      'revoked' => 'Peer revoked you — pair again',
+      'key_mismatch' => 'Peer key changed — pair again',
+      'not_paired' => 'Not paired with this device — pair first',
+      'transport_lost' || 'transport' => 'Connection lost',
+      'declined' => 'Peer declined the transfer',
+      _ => code,
+    };
   }
 
   Widget _buildCancelled(ActiveTransfer t) {

@@ -153,7 +153,10 @@ class _ShellPageState extends ConsumerState<ShellPage> {
             ? 'Paired with ${url.deviceName.isNotEmpty ? url.deviceName : 'device'}'
             : 'Pairing failed'),
       ));
-      if (paired) ref.invalidate(trustedListProvider);
+      if (paired) {
+        ref.invalidate(trustedListProvider);
+        ref.invalidate(allTrustedListProvider);
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

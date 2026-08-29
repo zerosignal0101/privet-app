@@ -55,7 +55,9 @@ static void my_application_activate(GApplication* application) {
   // Set window icon from the bundled icon theme file.
   gtk_window_set_default_icon_name(APPLICATION_ID);
 
-  gtk_window_set_default_size(window, 1280, 720);
+  // The UI is a portrait phone layout; size the window to match it so the app
+  // fills the window instead of stretching a mobile column across a wide screen.
+  gtk_window_set_default_size(window, 420, 780);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(
@@ -64,8 +66,9 @@ static void my_application_activate(GApplication* application) {
   FlView* view = fl_view_new(project);
   GdkRGBA background_color;
   // Background defaults to black, override it here if necessary, e.g. #00000000
-  // for transparent.
-  gdk_rgba_parse(&background_color, "#000000");
+  // for transparent. Use a light color matching the app so the pre-first-frame
+  // view doesn't flash black behind the phone-width column.
+  gdk_rgba_parse(&background_color, "#f4f5fa");
   fl_view_set_background_color(view, &background_color);
   gtk_widget_show(GTK_WIDGET(view));
   gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));

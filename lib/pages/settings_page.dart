@@ -21,7 +21,19 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final identity = ref.watch(identityProvider);
-    final trusted = ref.watch(trustedListProvider);
+    // The daemon's list_trusted returns both trusted and revoked records. The
+    // trusted subset is what "Known Devices" elsewhere shows; Settings shows
+    // both so a revoked device (which the daemon hard-rejects on reconnect) can
+    // still be forgotten and re-paired. "Remove Trust" forgets rather than
+    // revokes: forgetting un-pairs the device and lets it pair again, revoking
+    // bans it until forgotten.
+    final allTrusted = ref.watch(allTrustedListProvider);
+    final trustedPeers = (allTrusted.value ?? const [])
+        .where((p) => p.trustState == 'Trusted')
+        .toList();
+    final revokedPeers = (allTrusted.value ?? const [])
+        .where((p) => p.trustState != 'Trusted')
+        .toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -116,14 +128,14 @@ class SettingsPage extends ConsumerWidget {
             child: Text('Trusted Devices',
                 style: Theme.of(context).textTheme.titleMedium),
           ),
-          if (trusted.value?.isEmpty ?? true)
+          if (allTrusted.value?.isEmpty ?? true)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child:
                   Text('No trusted devices', style: TextStyle(color: Colors.grey)),
             )
-          else
-            ...(trusted.value ?? []).map((tp) => ListTile(
+          else ...[
+            ...trustedPeers.map((tp) => ListTile(
                   dense: true,
                   leading: const Icon(Icons.verified_user, size: 20),
                   title: Text(tp.deviceName),
@@ -134,9 +146,37 @@ class SettingsPage extends ConsumerWidget {
                   ),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline, size: 20),
-                    onPressed: () => _confirmRevoke(context, ref, tp),
+                    tooltip: 'Remove trust',
+                    onPressed: () => _confirmRemove(context, ref, tp),
                   ),
                 )),
+            // Revoked peers are kept by the daemon and hard-rejected on
+            // reconnect, so surface them here with a forget action — otherwise
+            // a banned device can never be cleared to pair again.
+            if (revokedPeers.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Text('Revoked Devices',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.outline)),
+              ),
+              ...revokedPeers.map((tp) => ListTile(
+                    dense: true,
+                    leading: Icon(Icons.block, size: 20, color: Colors.grey),
+                    title: Text(tp.deviceName),
+                    subtitle: Text(
+                      'Revoked — forget to allow pairing again',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20),
+                      tooltip: 'Forget revoked device',
+                      onPressed: () => _confirmForget(context, ref, tp),
+                    ),
+                  )),
+            ],
+          ],
 
           const Divider(),
 
@@ -154,22 +194,10 @@ class SettingsPage extends ConsumerWidget {
 
   Future<void> _editDeviceName(
       BuildContext context, WidgetRef ref, String current) async {
-    final controller = TextEditingController(text: current);
     final name = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('App Device Name'),
-        content: TextField(controller: controller),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, controller.text),
-              child: const Text('Save')),
-        ],
-      ),
+      builder: (_) => _DeviceNameDialog(initial: current),
     );
-    controller.dispose();
     if (name != null && name.isNotEmpty) {
       await ref.read(settingsProvider.notifier).setDeviceName(name);
     }
@@ -182,13 +210,20 @@ class SettingsPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _confirmRevoke(
+  /// Un-pair a trusted device. This must call `forget_peer`, not `revoke_peer`:
+  /// forgetting removes the trust record so the device becomes unknown again and
+  /// can be paired fresh, whereas revoking leaves a `Revoked` row that the
+  /// daemon hard-rejects on reconnect — which surfaced as "Pairing failed:
+  /// quic read: connection lost" when the user scanned a QR after removing trust.
+  Future<void> _confirmRemove(
       BuildContext context, WidgetRef ref, TrustedPeerDto peer) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Remove Trust?'),
-        content: Text('Revoke trust for ${peer.deviceName}?'),
+        content: Text(
+            'Remove ${peer.deviceName} from your trusted devices? '
+            'You can pair it again anytime.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -200,11 +235,89 @@ class SettingsPage extends ConsumerWidget {
       ),
     );
     if (confirmed == true) {
-      await ref
-          .read(daemonStateProvider)
-          .service
-          ?.revokePeer(peer.deviceFingerprint);
-      ref.invalidate(trustedListProvider);
+      await _forgetPeer(ref, peer.deviceFingerprint);
     }
+  }
+
+  /// Clear a revoked (banned) device so it becomes unknown and can pair again.
+  Future<void> _confirmForget(
+      BuildContext context, WidgetRef ref, TrustedPeerDto peer) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Forget revoked device?'),
+        content: Text(
+            '${peer.deviceName} is revoked and cannot connect. '
+            'Forget it to allow pairing again?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Forget')),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _forgetPeer(ref, peer.deviceFingerprint);
+    }
+  }
+
+  Future<void> _forgetPeer(WidgetRef ref, String fingerprint) async {
+    await ref
+        .read(daemonStateProvider)
+        .service
+        ?.forgetPeer(fingerprint);
+    ref.invalidate(allTrustedListProvider);
+    ref.invalidate(trustedListProvider);
+  }
+}
+
+/// A device-name alert dialog that owns its [TextEditingController] so the
+/// controller outlives the route's exit animation. Disposing an external
+/// controller as soon as `showDialog`'s future resolves (i.e. at
+/// `Navigator.pop`) crashes the next rebuild of the still-fading-out `TextField`
+/// ("A TextEditingController was used after being disposed", which cascades into
+/// the `_dependents.isEmpty` framework assertion) — the controller must live
+/// until the route subtree is unmounted, which happens in this State's
+/// `dispose()`.
+class _DeviceNameDialog extends StatefulWidget {
+  const _DeviceNameDialog({required this.initial});
+
+  final String initial;
+
+  @override
+  State<_DeviceNameDialog> createState() => _DeviceNameDialogState();
+}
+
+class _DeviceNameDialogState extends State<_DeviceNameDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('App Device Name'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        onSubmitted: (v) => Navigator.pop(context, v),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel')),
+        TextButton(
+            onPressed: () => Navigator.pop(context, _controller.text),
+            child: const Text('Save')),
+      ],
+    );
   }
 }

@@ -23,6 +23,16 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   bool _showQr = false;
 
+  /// Re-scans nearby devices and re-reads the trusted list. A discovery scan
+  /// only repopulates "Nearby Devices", so "Known Devices" (the trusted list)
+  /// is invalidated separately — otherwise the refresh button (the only refresh
+  /// on desktop, where the pull-down gesture doesn't exist) would leave the
+  /// known-device list stale.
+  Future<void> _refresh() async {
+    await ref.read(peerListProvider.notifier).refresh();
+    ref.invalidate(trustedListProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final peers = ref.watch(peerListProvider);
@@ -62,9 +72,21 @@ class _HomePageState extends ConsumerState<HomePage> {
         .toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Privet')),
+      appBar: AppBar(
+        title: const Text('Privet'),
+        actions: [
+          // Desktop has no pull-to-refresh touch gesture (mouse only), so the
+          // refresh button is the only way to re-scan; the pull-down is kept for
+          // touch devices. Both trigger the same refresh.
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh devices',
+            onPressed: _refresh,
+          ),
+        ],
+      ),
       body: RefreshIndicator(
-        onRefresh: () => ref.read(peerListProvider.notifier).refresh(),
+        onRefresh: _refresh,
         child: ListView(
           children: [
             _IdentityCard(

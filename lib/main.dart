@@ -1,5 +1,7 @@
 import 'dart:ui' show AppExitResponse;
 
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -78,6 +80,14 @@ class _PrivetAppState extends ConsumerState<PrivetApp> {
       title: 'Privet',
       theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
       debugShowCheckedModeBanner: false,
+      // The UI is a single phone-width column (bottom nav + ListTiles). The
+      // desktop runners open a phone-sized window (420×780) to match, and this
+      // builder caps the content at a mobile width and paints the app's
+      // background across the whole window, so a maximized window keeps the
+      // mobile proportions beside the theme background instead of stretching or
+      // showing black borders. Applied on every route so pushed pages (send
+      // preparation, dialogs) stay inside the column too.
+      builder: _mobileFrame,
       home: switch (daemon.kind) {
         DaemonStateKind.starting =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
@@ -107,4 +117,33 @@ class _ErrorScreen extends StatelessWidget {
           ]),
         ),
       );
+}
+
+/// The app is laid out for a phone-width column (bottom nav + dense ListTiles).
+/// On phones/tablets the screen is already roughly that width, so the child
+/// passes through untouched. On desktop the window is resized (in the native
+/// runner) to a phone-like ratio that matches this layout; the column here
+/// merely caps the content width if the user stretches or maximizes the window,
+/// and the whole window is painted with the app's background color so the area
+/// beside a wider-than-max column never shows the black native view background.
+Widget _mobileFrame(BuildContext context, Widget? child) {
+  final background = Theme.of(context).scaffoldBackgroundColor;
+  if (!kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS)) {
+    return ColoredBox(
+        key: const ValueKey('phone-frame'),
+        color: background,
+        child: child ?? const SizedBox.shrink());
+  }
+  return ColoredBox(
+    key: const ValueKey('phone-frame'),
+    color: background,
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: SizedBox.expand(child: child ?? const SizedBox.shrink()),
+      ),
+    ),
+  );
 }

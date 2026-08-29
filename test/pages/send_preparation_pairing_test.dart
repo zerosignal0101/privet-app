@@ -56,7 +56,7 @@ Future<DaemonSupervisor> _fakeSupervisor() async {
                   {
                     'device_fingerprint': 'fp-pc',
                     'device_name': 'pc',
-                    'trust_state': 'trusted',
+                    'trust_state': 'Trusted',
                     'spki_hex': 'x',
                     'first_paired_ts': 1,
                     'last_seen_ts': 1,

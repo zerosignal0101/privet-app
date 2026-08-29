@@ -38,17 +38,34 @@ class _PeerPickerSheetState extends ConsumerState<PeerPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final peers = ref.watch(peerListProvider);
+    final trusted = ref.watch(trustedListProvider);
     // The daemon can discover this device itself; never offer "us" as a target.
     final identityFp = ref.watch(identityProvider).value?.deviceFingerprint;
-    final nearbyPeers =
-        peers.where((p) => p.deviceFingerprint != identityFp).toList();
+
+    // "Known Devices" are everything we have paired with (from the trust
+    // store) — selectable even when the device is offline or hasn't broadcast
+    // yet; the daemon's send is keyed by trusted fingerprint. "Nearby Devices"
+    // are discovered peers that aren't already trusted, so a known device never
+    // shows up twice and unknown discoveries stay easy to spot.
+    final knownPeers = (trusted.value ?? const [])
+        .where((p) => p.deviceFingerprint != identityFp)
+        .toList();
+    final knownFps = knownPeers.map((p) => p.deviceFingerprint).toSet();
+    final nearbyPeers = peers
+        .where((p) =>
+            p.deviceFingerprint != identityFp &&
+            !knownFps.contains(p.deviceFingerprint))
+        .toList();
+
+    final hasAny = knownPeers.isNotEmpty || nearbyPeers.isNotEmpty;
 
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.only(bottom: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        // shrinkWrap so a long known+nearby list scrolls inside the sheet
+        // instead of overflowing.
+        child: ListView(
+          shrinkWrap: true,
           children: [
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -70,10 +87,35 @@ class _PeerPickerSheetState extends ConsumerState<PeerPickerSheet> {
               ),
             ListTile(
               leading: const Icon(Icons.refresh),
-              title: const Text('Refresh Nearby'),
+              title: const Text('Refresh Devices'),
               subtitle: const Text('Re-scan the local network'),
-              onTap: () => ref.read(peerListProvider.notifier).refresh(),
+              onTap: () {
+                ref.read(peerListProvider.notifier).refresh();
+                ref.invalidate(trustedListProvider);
+              },
             ),
+            if (knownPeers.isNotEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Text('Known Devices',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+              ),
+              ...knownPeers.map((tp) => ListTile(
+                    leading: const Icon(Icons.verified_user, size: 20),
+                    title: Text(tp.deviceName,
+                        style: const TextStyle(fontSize: 14)),
+                    subtitle: Text(
+                      _shortFp(tp.deviceFingerprint),
+                      style: const TextStyle(
+                          fontSize: 11, color: Colors.grey),
+                    ),
+                    dense: true,
+                    onTap: () {
+                      Navigator.pop(context);
+                      widget.onSelected(tp.deviceFingerprint, name: tp.deviceName);
+                    },
+                  )),
+            ],
             if (nearbyPeers.isNotEmpty) ...[
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -96,12 +138,12 @@ class _PeerPickerSheetState extends ConsumerState<PeerPickerSheet> {
                     },
                   )),
             ],
-            if (nearbyPeers.isEmpty)
+            if (!hasAny)
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Center(
                   child: Text(
-                    'No devices found yet. Use "Refresh Nearby" to scan, '
+                    'No devices found yet. Use "Refresh Devices" to scan, '
                     'or "Send by Address" to pair manually.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey),

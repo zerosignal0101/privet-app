@@ -151,7 +151,7 @@ void main() {
             {
               'device_fingerprint': 'tp',
               'device_name': 'friend',
-              'trust_state': 'trusted',
+              'trust_state': 'Trusted',
               'spki_hex': 'x',
               'first_paired_ts': 1,
               'last_seen_ts': 2,
@@ -168,5 +168,75 @@ void main() {
 
     final trusted = await daemon.container.read(trustedListProvider.future);
     expect(trusted.single.deviceFingerprint, 'tp');
+  });
+
+  test('trustedListProvider excludes revoked peers', () async {
+    // The daemon's list_trusted keeps revoked records in the store; the app must
+    // surface only still-trusted ones, so Remove Trust actually removes the
+    // device from the UI (regression for the trust-removal bug).
+    final daemon = await bootTestDaemon(_script({
+      'list_trusted': (id) => _ok(id, 'trusted', [
+            {
+              'device_fingerprint': 'still-trusted',
+              'device_name': 'friend',
+              'trust_state': 'Trusted',
+              'spki_hex': 'x',
+              'first_paired_ts': 1,
+              'last_seen_ts': 2,
+              'revoked_ts': null,
+              'revocation_reason': null,
+            },
+            {
+              'device_fingerprint': 'revoked-peer',
+              'device_name': 'ex',
+              'trust_state': 'Revoked',
+              'spki_hex': 'y',
+              'first_paired_ts': 3,
+              'last_seen_ts': 4,
+              'revoked_ts': 5,
+              'revocation_reason': 'user_request',
+            },
+          ]),
+    }));
+    addTearDown(daemon.dispose);
+
+    final trusted = await daemon.container.read(trustedListProvider.future);
+    expect(trusted.map((p) => p.deviceFingerprint),
+        ['still-trusted']);
+  });
+
+  test('allTrustedListProvider keeps revoked peers for recovery', () async {
+    // Settings watches allTrustedListProvider so a device the user revoked
+    // (which the daemon hard-rejects on reconnect) can still be forgotten and
+    // re-paired; trustedListProvider hides it everywhere else.
+    final daemon = await bootTestDaemon(_script({
+      'list_trusted': (id) => _ok(id, 'trusted', [
+            {
+              'device_fingerprint': 'still-trusted',
+              'device_name': 'friend',
+              'trust_state': 'Trusted',
+              'spki_hex': 'x',
+              'first_paired_ts': 1,
+              'last_seen_ts': 2,
+              'revoked_ts': null,
+              'revocation_reason': null,
+            },
+            {
+              'device_fingerprint': 'revoked-peer',
+              'device_name': 'ex',
+              'trust_state': 'Revoked',
+              'spki_hex': 'y',
+              'first_paired_ts': 3,
+              'last_seen_ts': 4,
+              'revoked_ts': 5,
+              'revocation_reason': 'user_request',
+            },
+          ]),
+    }));
+    addTearDown(daemon.dispose);
+
+    final all = await daemon.container.read(allTrustedListProvider.future);
+    expect(all.map((p) => p.deviceFingerprint),
+        ['still-trusted', 'revoked-peer']);
   });
 }
