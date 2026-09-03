@@ -44,9 +44,12 @@ void main() {
         find.text('Not paired with this device — pair first'), findsOneWidget);
   });
 
-  testWidgets('transport_lost shows "connection lost"', (tester) async {
+  testWidgets('transport_lost points the user at the peer being offline',
+      (tester) async {
     await tester.pumpWidget(wrap(failed(errorCode: 'transport_lost')));
-    expect(find.text('Connection lost'), findsOneWidget);
+    expect(
+        find.text('Connection lost — is the other device online?'),
+        findsOneWidget);
   });
 
   testWidgets('missing code falls back to the peer name', (tester) async {

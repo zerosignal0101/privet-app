@@ -200,6 +200,17 @@ class PeerDto {
   final int lastBeaconMs;
   final List<CandidateAddressDto> candidates;
 
+  /// Whether the daemon currently considers this peer reachable. The discovery
+  /// engine drives records Seen -> Resolved -> Live as a peer is beaconed and
+  /// connected, and flags it Stale (no beacon for 3 min) then Lost (5 min) once
+  /// it goes quiet. Absent means it sent a goodbye. Anything else — seen,
+  /// resolved, live — is treated as online.
+  bool get isOnline => const {'seen', 'resolved', 'live'}.contains(state);
+
+  /// States that mean the peer has left the network and is not coming back on
+  /// its own (goodbye sent, or the lost-timeout elapsed).
+  bool get isGone => state == 'lost' || state == 'absent';
+
   Map<String, dynamic> toJson() => {
         'device_fingerprint': deviceFingerprint,
         'device_name': deviceName,

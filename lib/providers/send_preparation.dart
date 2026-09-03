@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../services/android/send_cache.dart';
 import '../state/daemon_state.dart';
 
 /// A file (or directory marker) chosen for sending, with both the absolute
@@ -72,8 +74,37 @@ final sendPreparationProvider =
         SendPreparationNotifier.new);
 
 class SendPreparationNotifier extends Notifier<SendPreparationState> {
+  /// Cached staging files currently in flight: transfer id -> the top-level
+  /// cache paths the daemon was handed for that send. Kept apart from the UI
+  /// state so it survives `reset()`/`clearFiles()` (a send outlives the page
+  /// that started it); entries are removed when the transfer reaches a terminal
+  /// state and its copies are deleted.
+  final Map<String, List<String>> _pendingCleanup = {};
+
   @override
   SendPreparationState build() => const SendPreparationState();
+
+  /// Deletes the staging copies (if any) that belonged to [transferId] once its
+  /// transfer is terminal. No-op for receive transfers and paths outside the
+  /// cache; idempotent.
+  Future<void> releaseTempFor(String transferId) async {
+    final paths = _pendingCleanup.remove(transferId);
+    if (paths == null || paths.isEmpty) return;
+    await SendCache.deleteIfCachedMany(paths);
+  }
+
+  /// Discards the whole selection AND deletes the Android staging copies that
+  /// were never handed to the daemon (the user removed them before sending).
+  Future<void> discardSelection() async {
+    final paths = state.entries.map((e) => e.path).toList();
+    clearFiles();
+    await SendCache.deleteIfCachedMany(paths);
+  }
+
+  /// Shows a transient blocking message (e.g. the selected recipient is not
+  /// online) without touching the file selection, so the user can pick another
+  /// device and retry.
+  void setError(String message) => state = state.copyWith(error: message);
 
   void addFileEntry(SendFileEntry entry) {
     state = state.copyWith(
@@ -126,8 +157,17 @@ class SendPreparationNotifier extends Notifier<SendPreparationState> {
   }
 
   /// Remove a file (or a directory subtree) by its relative path, keeping
-  /// `rootPaths` in sync so `isReady` stays accurate.
+  /// `rootPaths` in sync so `isReady` stays accurate. Android staging copies
+  /// that are dropped this way are deleted immediately — they were never handed
+  /// to the daemon, so nothing will read them again.
   void removeByRelativePath(String relativePath) {
+    final removedPaths = <String>[];
+    for (final e in state.entries) {
+      final rel = e.relativePath;
+      if (rel == relativePath || rel.startsWith('$relativePath/')) {
+        removedPaths.add(e.path);
+      }
+    }
     final remaining = state.entries.where((e) {
       if (e.relativePath == relativePath) return false;
       if (e.relativePath.startsWith('$relativePath/')) return false;
@@ -139,6 +179,7 @@ class SendPreparationNotifier extends Notifier<SendPreparationState> {
           .any((e) => e.path == rp || e.path.startsWith(rp + sep));
     }).toList();
     state = state.copyWith(entries: remaining, rootPaths: remainingRoots);
+    unawaited(SendCache.deleteIfCachedMany(removedPaths));
   }
 
   void clearFiles() {
@@ -170,12 +211,26 @@ class SendPreparationNotifier extends Notifier<SendPreparationState> {
     state = state.copyWith(sending: true, clearError: true);
     try {
       final transferId = await service.send(state.rootPaths, fp);
+      await _trackTempForRelease(transferId);
       state = state.copyWith(sending: false, clearError: true);
       return transferId;
     } catch (e) {
       state = state.copyWith(sending: false, error: e.toString());
       return null;
     }
+  }
+
+  /// Records which of the just-queued root paths are Android cache staging
+  /// copies so they can be deleted when the transfer reaches a terminal state.
+  /// The daemon reads these files asynchronously after `send` returns, so they
+  /// must survive until the transfer actually completes or fails.
+  Future<void> _trackTempForRelease(String transferId) async {
+    final temp = <String>[];
+    for (final p in state.rootPaths) {
+      if (await SendCache.isCachePath(p)) temp.add(p);
+    }
+    if (temp.isEmpty) return;
+    _pendingCleanup[transferId] = temp;
   }
 
   static String _basename(String path) =>

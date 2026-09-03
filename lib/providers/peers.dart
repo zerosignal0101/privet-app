@@ -16,6 +16,14 @@ final identityProvider = FutureProvider<IdentityDto?>((ref) async {
 final peerListProvider =
     NotifierProvider<PeerListNotifier, List<PeerDto>>(PeerListNotifier.new);
 
+/// Fingerprints the daemon currently considers online (discovered and not
+/// stale/lost). Drives the Online/Offline markers on Known Devices and gates
+/// sends to a specific peer.
+final onlinePeerFingerprintsProvider = Provider<Set<String>>((ref) {
+  final peers = ref.watch(peerListProvider);
+  return {for (final p in peers) if (p.isOnline) p.deviceFingerprint};
+});
+
 class PeerListNotifier extends Notifier<List<PeerDto>> {
   StreamSubscription<PrivetEvent>? _sub;
 
@@ -39,9 +47,14 @@ class PeerListNotifier extends Notifier<List<PeerDto>> {
     final service = ref.read(daemonStateProvider).service;
     if (service == null) return;
     final self = _selfFingerprint;
-    final peers = await service.peers();
-    state =
-        self == null ? peers : peers.where((p) => p.deviceFingerprint != self).toList();
+    // Drop peers the daemon has already declared gone (lost / goodbye). The
+    // discovery engine keeps those records in its store until they re-beacon,
+    // so without this filter a manual refresh would resurrect a device that
+    // `device_lost` just removed from the list.
+    final peers = (await service.peers())
+        .where((p) => !p.isGone && (self == null || p.deviceFingerprint != self))
+        .toList();
+    state = peers;
   }
 
   void _onEvent(PrivetEvent event) {

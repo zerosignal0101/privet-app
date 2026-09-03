@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/ipc/events.dart';
 import '../services/privet_service.dart';
 import '../state/daemon_state.dart';
+import 'send_preparation.dart';
 
 enum TransferState {
   preparing,
@@ -154,6 +155,11 @@ class ActiveTransfersNotifier extends Notifier<Map<String, ActiveTransfer>> {
         } else if (now.difference(first) >= const Duration(seconds: 20)) {
           stale.add(t.transferId);
         }
+      }
+      // A send the daemon no longer tracks but whose terminal event we never
+      // saw is done: free its cached staging files so they don't leak.
+      for (final id in stale) {
+        _releaseSendTemp(id);
       }
       _remove(stale);
     } catch (_) {
@@ -304,18 +310,21 @@ class ActiveTransfersNotifier extends Notifier<Map<String, ActiveTransfer>> {
           ...state,
           transferId: _terminal(transferId, TransferState.completed),
         };
+        _releaseSendTemp(transferId);
         break;
       case TransferCancelledEvent(:final transferId):
         state = {
           ...state,
           transferId: _terminal(transferId, TransferState.cancelled),
         };
+        _releaseSendTemp(transferId);
         break;
       case TransferFailedEvent(:final transferId, :final errorCode, :final retryable):
         state = {
           ...state,
           transferId: _failed(transferId, errorCode, retryable),
         };
+        _releaseSendTemp(transferId);
         break;
       case RuntimeConfigChangedEvent(:final config):
         // "Accept All Trusted" toggling must affect how later offers are
@@ -325,6 +334,15 @@ class ActiveTransfersNotifier extends Notifier<Map<String, ActiveTransfer>> {
       default:
         break;
     }
+  }
+
+  /// Frees the Android staging copies (if any) tracked for a send once it is
+  /// terminal or the daemon stops reporting it. The send-preparation notifier
+  /// registered them at `send` time keyed by transfer id; releasing is
+  /// idempotent and a no-op for receives and desktop paths.
+  void _releaseSendTemp(String transferId) {
+    unawaited(
+        ref.read(sendPreparationProvider.notifier).releaseTempFor(transferId));
   }
 
   /// Records the moment this transfer last produced an event, so the silence

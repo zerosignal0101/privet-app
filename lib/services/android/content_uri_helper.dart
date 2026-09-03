@@ -6,11 +6,9 @@ const _channel = MethodChannel('privet/file');
 
 /// Android SAF helpers over the `privet/file` channel. The daemon only reads
 /// real filesystem paths, so any `content://` URI must be copied to the app
-/// cache before it can be sent.
-///
-/// Cached files land under `<cache>/privet/send-cache/` (session-scoped by the
-/// native side); the cache is best-effort evicted by Android when storage runs
-/// low.
+/// cache before it can be sent. The copies land under `<cache>/privet/send-cache/`
+/// and are deleted per-transfer by `SendCache` (see `lib/services/android/`),
+/// not by a blanket wipe.
 Future<String?> cacheToPath(String contentUri) async {
   if (!Platform.isAndroid) return null;
   try {
@@ -37,16 +35,5 @@ Future<bool> checkContentUri(String contentUri) async {
     return await _channel.invokeMethod<bool>('checkContentUri', {'uri': contentUri}) ?? false;
   } catch (_) {
     return false;
-  }
-}
-
-/// Drops stale send-cache sessions. Called before a new SAF pick so cached
-/// copies don't accumulate. No-op off-Android.
-Future<void> clearSendCache() async {
-  if (!Platform.isAndroid) return;
-  try {
-    await _channel.invokeMethod('clearSendCache');
-  } catch (_) {
-    // channel unavailable — best effort
   }
 }

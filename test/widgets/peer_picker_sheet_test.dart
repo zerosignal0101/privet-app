@@ -10,7 +10,8 @@ import 'package:privet_app/widgets/peer_picker_sheet.dart';
 import '../support/test_daemon.dart';
 
 void main() {
-  testWidgets('picker shows known + nearby, dedupes trusted, selects', (tester) async {
+  testWidgets('picker marks offline devices, dedupes trusted, selects online',
+      (tester) async {
     final daemon = await bootTestDaemon(scriptFromHandlers({
       'get_identity': (id, _) => okResponse(id, 'identity', {
             'device_fingerprint': 'me',
@@ -57,6 +58,13 @@ void main() {
     expect(find.text('friend'), findsOneWidget);
     expect(find.text('Known Devices'), findsOneWidget);
 
+    // The known device has NOT broadcast yet -> clearly marked Offline and not
+    // selectable, so a send to it is impossible.
+    expect(find.textContaining('Offline'), findsOneWidget);
+    final offlineTile = find.widgetWithText(ListTile, 'friend');
+    expect(tester.widget<ListTile>(offlineTile).enabled, isFalse,
+        reason: 'an offline device must not be selectable');
+
     // A discovered peer that is NOT trusted lands under Nearby Devices; a
     // discovered peer that IS trusted is deduped into Known Devices only.
     daemon.transport.inject(_event(1, 'device_discovered',
@@ -67,10 +75,11 @@ void main() {
 
     expect(find.text('Nearby Devices'), findsOneWidget);
     expect(find.text('laptop'), findsOneWidget);
+    expect(find.text('Offline'), findsNothing);
     // 'friend' appears exactly once (Known Devices), not again under Nearby.
     expect(find.text('friend'), findsOneWidget);
 
-    // Tapping a known device selects it.
+    // Tapping the now-online known device selects it.
     await tester.tap(find.text('friend'));
     await tester.pump();
     expect(selectedFp, 'trusted-fp');

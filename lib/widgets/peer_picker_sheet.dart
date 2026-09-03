@@ -41,12 +41,14 @@ class _PeerPickerSheetState extends ConsumerState<PeerPickerSheet> {
     final trusted = ref.watch(trustedListProvider);
     // The daemon can discover this device itself; never offer "us" as a target.
     final identityFp = ref.watch(identityProvider).value?.deviceFingerprint;
+    final onlineFps = ref.watch(onlinePeerFingerprintsProvider);
 
     // "Known Devices" are everything we have paired with (from the trust
-    // store) — selectable even when the device is offline or hasn't broadcast
-    // yet; the daemon's send is keyed by trusted fingerprint. "Nearby Devices"
-    // are discovered peers that aren't already trusted, so a known device never
-    // shows up twice and unknown discoveries stay easy to spot.
+    // store). Only the ones currently broadcasting are selectable; the rest are
+    // marked Offline and disabled, because a send to an offline device would
+    // just fail. "Nearby Devices" are discovered peers that aren't already
+    // trusted, so a known device never shows up twice and unknown discoveries
+    // stay easy to spot.
     final knownPeers = (trusted.value ?? const [])
         .where((p) => p.deviceFingerprint != identityFp)
         .toList();
@@ -100,21 +102,31 @@ class _PeerPickerSheetState extends ConsumerState<PeerPickerSheet> {
                 child: Text('Known Devices',
                     style: TextStyle(fontSize: 12, color: Colors.grey)),
               ),
-              ...knownPeers.map((tp) => ListTile(
-                    leading: const Icon(Icons.verified_user, size: 20),
-                    title: Text(tp.deviceName,
-                        style: const TextStyle(fontSize: 14)),
-                    subtitle: Text(
-                      _shortFp(tp.deviceFingerprint),
-                      style: const TextStyle(
-                          fontSize: 11, color: Colors.grey),
-                    ),
-                    dense: true,
-                    onTap: () {
-                      Navigator.pop(context);
-                      widget.onSelected(tp.deviceFingerprint, name: tp.deviceName);
-                    },
-                  )),
+              ...knownPeers.map((tp) {
+                final online = onlineFps.contains(tp.deviceFingerprint);
+                return ListTile(
+                  enabled: online,
+                  leading: Icon(Icons.verified_user,
+                      size: 20, color: online ? null : Colors.grey),
+                  title: Text(tp.deviceName,
+                      style: const TextStyle(fontSize: 14)),
+                  subtitle: Text(
+                    '${_shortFp(tp.deviceFingerprint)} · '
+                    '${online ? 'Online' : 'Offline'}',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: online ? Colors.grey : Colors.orange),
+                  ),
+                  dense: true,
+                  onTap: online
+                      ? () {
+                          Navigator.pop(context);
+                          widget.onSelected(tp.deviceFingerprint,
+                              name: tp.deviceName);
+                        }
+                      : null,
+                );
+              }),
             ],
             if (nearbyPeers.isNotEmpty) ...[
               const Padding(
@@ -122,21 +134,31 @@ class _PeerPickerSheetState extends ConsumerState<PeerPickerSheet> {
                 child: Text('Nearby Devices',
                     style: TextStyle(fontSize: 12, color: Colors.grey)),
               ),
-              ...nearbyPeers.map((peer) => ListTile(
-                    leading: const Icon(Icons.devices, size: 20),
-                    title:
-                        Text(peer.deviceName, style: const TextStyle(fontSize: 14)),
-                    subtitle: Text(
-                      _shortFp(peer.deviceFingerprint),
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    ),
-                    dense: true,
-                    onTap: () {
-                      Navigator.pop(context);
-                      widget.onSelected(peer.deviceFingerprint,
-                          name: peer.deviceName);
-                    },
-                  )),
+              ...nearbyPeers.map((peer) {
+                final online = peer.isOnline;
+                return ListTile(
+                  enabled: online,
+                  leading: Icon(Icons.devices,
+                      size: 20, color: online ? null : Colors.grey),
+                  title: Text(peer.deviceName,
+                      style: const TextStyle(fontSize: 14)),
+                  subtitle: Text(
+                    '${_shortFp(peer.deviceFingerprint)} · '
+                    '${online ? 'Online' : 'Offline'}',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: online ? Colors.grey : Colors.orange),
+                  ),
+                  dense: true,
+                  onTap: online
+                      ? () {
+                          Navigator.pop(context);
+                          widget.onSelected(peer.deviceFingerprint,
+                              name: peer.deviceName);
+                        }
+                      : null,
+                );
+              }),
             ],
             if (!hasAny)
               const Padding(

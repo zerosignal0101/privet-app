@@ -11,7 +11,6 @@ import '../providers/peers.dart';
 import '../providers/send_preparation.dart';
 import '../providers/settings.dart';
 import '../services/android/content_uri_dir_helper.dart';
-import '../services/android/content_uri_helper.dart';
 import '../services/clipboard_service.dart';
 import '../state/daemon_state.dart';
 import '../utils/format.dart';
@@ -138,7 +137,9 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
       ),
     );
     if (confirmed == true) {
-      ref.read(sendPreparationProvider.notifier).clearFiles();
+      // Discarding also deletes the Android staging copies that were staged but
+      // never sent, so an abandoned selection can't bloat the app cache.
+      await ref.read(sendPreparationProvider.notifier).discardSelection();
     }
     return confirmed ?? false;
   }
@@ -151,12 +152,19 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
         (trusted.value ?? const []).map((t) => t.deviceFingerprint).toSet();
     final needsPairing = state.peerFingerprint != null &&
         !trustedFps.contains(state.peerFingerprint);
+    // A trusted recipient that is not currently discovered is offline — the send
+    // must not go through (the daemon would only spin against a dead address).
+    final onlineFps = ref.watch(onlinePeerFingerprintsProvider);
+    final selectedPeerOffline = state.peerFingerprint != null &&
+        !needsPairing &&
+        !onlineFps.contains(state.peerFingerprint);
 
     final body = Column(
       children: [
         _RecipientSection(
           peerName: state.peerName,
           peerFingerprint: state.peerFingerprint,
+          offline: selectedPeerOffline,
           onChangeTap: () => _pickPeer(context, ref),
         ),
         const Divider(height: 1),
@@ -166,6 +174,25 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
             deviceFingerprint: state.peerFingerprint!,
             onShowMyCode: _showMyCode,
             onEnterTheirCode: () => _enterTheirCodeFor(state.peerFingerprint!),
+          ),
+
+        if (selectedPeerOffline)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Row(
+              children: [
+                const Icon(Icons.cloud_off, size: 14, color: Colors.orange),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '${state.peerName ?? 'This device'} is offline — turn it on '
+                    'or choose another recipient.',
+                    style: const TextStyle(
+                        color: Colors.orange, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
           ),
 
         if (state.error != null)
@@ -439,7 +466,9 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
       // than file_picker's directory picker. It caches the tree to real paths
       // (the daemon only reads real paths) and returns the cached root dir,
       // which we hand to addFiles — the daemon recurses directories itself.
-      await clearSendCache(); // drop stale sessions
+      // Staging copies are cleaned up per-transfer (and when a selection is
+      // discarded/removed), so no blanket wipe here — that would delete files a
+      // still-running transfer is reading.
       final root = await ContentUriDirectoryHelper.pickAndCacheDirectory();
       if (root != null) {
         ref.read(sendPreparationProvider.notifier).addFiles([root]);
@@ -561,6 +590,20 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
   // -------------------------------------------------------------------------
 
   Future<void> _send(WidgetRef ref) async {
+    final s = ref.read(sendPreparationProvider);
+    final onlineFps = ref.read(onlinePeerFingerprintsProvider);
+    final fp = s.peerFingerprint;
+    // Guard against sending to a recipient that is not currently online: the
+    // daemon would only retry a dead address and end in a confusing "Internal
+    // Error" tile or a bare Failed history row. Give a clear message instead.
+    if (fp != null && !onlineFps.contains(fp)) {
+      ref.read(sendPreparationProvider.notifier).setError(
+            '${s.peerName ?? 'The selected device'} is offline — it can\'t '
+            'receive files right now. Make sure it is running and on the same '
+            'network, then try again.',
+          );
+      return;
+    }
     final notifier = ref.read(sendPreparationProvider.notifier);
     final id = await notifier.send();
     if (id == null) return; // error already surfaced in state
@@ -579,11 +622,13 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
 class _RecipientSection extends StatelessWidget {
   final String? peerName;
   final String? peerFingerprint;
+  final bool offline;
   final VoidCallback onChangeTap;
 
   const _RecipientSection({
     this.peerName,
     this.peerFingerprint,
+    this.offline = false,
     required this.onChangeTap,
   });
 
@@ -591,9 +636,14 @@ class _RecipientSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final fp = peerFingerprint;
     return ListTile(
-      leading: const Icon(Icons.person),
+      leading: Icon(
+        offline ? Icons.cloud_off : Icons.person,
+        color: offline ? Colors.orange : null,
+      ),
       title: Text(peerName ?? 'No recipient selected'),
-      subtitle: fp != null ? Text(shortFingerprint(fp)) : null,
+      subtitle: fp != null
+          ? Text(offline ? '${shortFingerprint(fp)} · offline' : shortFingerprint(fp))
+          : null,
       trailing: TextButton(onPressed: onChangeTap, child: const Text('Change')),
     );
   }

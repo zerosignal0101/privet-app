@@ -55,6 +55,10 @@ class _HomePageState extends ConsumerState<HomePage> {
         .where((p) => p.deviceFingerprint != identityFp)
         .toList();
 
+    // Trusted peers currently broadcasting are online and sendable; the rest of
+    // the (persistent) trust list is offline and must not offer a Send button.
+    final onlineFps = ref.watch(onlinePeerFingerprintsProvider);
+
     final activeList = activeMap.values.toList();
     final awaitingAccept = activeList.where((t) => t.isAwaitingAccept).toList();
     final transferring = activeList
@@ -139,6 +143,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             else
               ...(trusted.value ?? []).map((tp) => _TrustedPeerTile(
                     peer: tp,
+                    online: onlineFps.contains(tp.deviceFingerprint),
                     onSend: () => _navigateToSend(
                         tp.deviceFingerprint, name: tp.deviceName),
                   )),
@@ -384,22 +389,36 @@ class _PairingQrCodeState extends ConsumerState<_PairingQrCode> {
 
 class _TrustedPeerTile extends StatelessWidget {
   final TrustedPeerDto peer;
+
+  /// Whether the device is currently broadcasting (discovered online).
+  final bool online;
   final VoidCallback onSend;
 
-  const _TrustedPeerTile({required this.peer, required this.onSend});
+  const _TrustedPeerTile({
+    required this.peer,
+    required this.onSend,
+    this.online = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final statusColor = online ? Colors.green.shade700 : Colors.grey;
     return ListTile(
       dense: true,
-      leading: Icon(Icons.verified_user, color: Colors.green.shade700, size: 20),
+      leading: Icon(Icons.verified_user, color: statusColor, size: 20),
       title: Text(peer.deviceName, style: const TextStyle(fontSize: 14)),
       subtitle: Text(
-        shortFingerprint(peer.deviceFingerprint),
-        style: const TextStyle(
-            fontSize: 11, color: Colors.grey, fontFamily: 'monospace'),
+        '${shortFingerprint(peer.deviceFingerprint)} · '
+        '${online ? 'Online' : 'Offline'}',
+        style: TextStyle(
+            fontSize: 11,
+            color: online ? Colors.green.shade600 : Colors.grey,
+            fontFamily: 'monospace'),
       ),
-      trailing: IconButton(icon: const Icon(Icons.send, size: 18), onPressed: onSend),
+      // No Send button for an offline device — sending would only fail.
+      trailing: online
+          ? IconButton(icon: const Icon(Icons.send, size: 18), onPressed: onSend)
+          : null,
     );
   }
 }
@@ -440,18 +459,24 @@ class _PeerTile extends StatelessWidget {
     final addr = peer.candidates.isNotEmpty ? peer.candidates.first.ip : null;
     return ListTile(
       dense: true,
-      leading: const Icon(Icons.devices, size: 20),
+      leading: Icon(Icons.devices, size: 20, color: peer.isOnline ? null : Colors.grey),
       title: Text(peer.deviceName, style: const TextStyle(fontSize: 14)),
       subtitle: Text(
-        addr ?? shortFingerprint(peer.deviceFingerprint),
+        peer.isOnline
+            ? (addr ?? shortFingerprint(peer.deviceFingerprint))
+            : 'Offline · ${addr ?? shortFingerprint(peer.deviceFingerprint)}',
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontSize: 11,
-          color: addr != null ? Colors.green.shade700 : Colors.grey,
+          color: addr != null && peer.isOnline
+              ? Colors.green.shade700
+              : Colors.grey,
           fontFamily: 'monospace',
         ),
       ),
-      trailing: IconButton(icon: const Icon(Icons.send, size: 18), onPressed: onSend),
+      trailing: peer.isOnline
+          ? IconButton(icon: const Icon(Icons.send, size: 18), onPressed: onSend)
+          : null,
     );
   }
 }

@@ -261,7 +261,8 @@ class _TransferTileState extends ConsumerState<TransferTile> {
       'revoked' => 'Peer revoked you — pair again',
       'key_mismatch' => 'Peer key changed — pair again',
       'not_paired' => 'Not paired with this device — pair first',
-      'transport_lost' || 'transport' => 'Connection lost',
+      'transport_lost' || 'transport' =>
+        'Connection lost — is the other device online?',
       'declined' => 'Peer declined the transfer',
       _ => code,
     };
