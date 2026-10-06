@@ -1,0 +1,40 @@
+00:07 +221 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_resolve_address_test.dart: ResolvedAddressDto from a real capture the two captures differ in trust, not in shape
+00:07 +222 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_resolve_address_test.dart: ResolvedAddressDto from a real capture a "found: false" answer carries no identity, as the captures imply
+00:07 +223 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_resolve_address_test.dart: ResolvedAddressDto from a real capture an unknown field is rejected rather than ignored
+00:07 +224 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/unix_socket_transport_test.dart: connects and echoes bytes over a unix socket
+00:08 +225 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/unix_socket_transport_test.dart: connects and echoes bytes over a unix socket
+00:08 +226 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/unix_socket_transport_test.dart: connects and echoes bytes over a unix socket
+00:08 +227 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/unix_socket_transport_test.dart: connects and echoes bytes over a unix socket
+00:08 +228 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/unix_socket_transport_test.dart: connects and echoes bytes over a unix socket
+00:08 +229 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/protocol_test.dart: framesFrom yields each message in order
+00:08 +230 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/protocol_test.dart: framesFrom yields a message split across chunks
+00:08 +231 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/protocol_test.dart: framesFrom propagates oversized frame errors
+00:08 +232 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/protocol_test.dart: envelope encodes request with id, method and params
+00:08 +233 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/protocol_test.dart: envelope decodeEnvelope rejects wrong protocol version
+00:08 +234 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_test.dart: DaemonStatus.fromJson
+00:08 +235 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_test.dart: PeerDto.fromJson with candidates
+00:08 +236 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_test.dart: HistoryDetailDto.fromJson
+00:08 +237 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_test.dart: ResolvedAddressDto.fromJson reads a device that answered
+00:08 +238 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_test.dart: ResolvedAddressDto.fromJson reads nothing answering
+00:08 +239 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_test.dart: ResolvedAddressDto rejects an unknown field
+00:08 +240 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_test.dart: unknown fields are rejected
+00:08 +241 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/events_test.dart: parses a progress event message
+00:08 +242 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/events_test.dart: parses runtime_config_changed with nested config
+00:08 +243 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/events_test.dart: parses daemon_stopping with empty data
+00:08 +244 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/events_test.dart: rejects unknown event names
+00:08 +245 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/events_test.dart: request envelopes carry method and params
+00:08 +246 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses missing field is treated as an empty list (old daemon)
+00:08 +247 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses explicit empty list is an empty list
+00:08 +248 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses parses every address in engine order with its ports
+00:08 +249 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses latestAddress is the newest remembered one
+00:08 +250 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses an IPv6 address renders bracketed
+00:08 +251 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses round-trips through toJson including addresses
+00:08 +252 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses a malformed entry is still a loud protocol error
+00:08 +253 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/transport_test.dart: MemoryTransport connects and echoes scripted replies
+00:08 +254 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/transport_test.dart: MemoryTransport inject pushes a raw server frame
+00:08 +255 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/client_test.dart: connect performs status and replay; dedupes events
+00:08 +256 -1: /home/zsig/Documents/gits/privet-app-wpr11/test/ipc/client_test.dart: call surfaces daemon errors as PrivetIpcException
+00:08 +257 -1: Some tests failed.
+
+Failing tests:
+  /home/zsig/Documents/gits/privet-app-wpr11/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)

@@ -1,0 +1,3 @@
+# WP-R11 host repro: the daemon event stream for the resend of a transfer whose
+# source file was deleted (this is what the app renders as "Transfer Failed io").
+{"data":{"error_code":"io","part_kept":false,"retryable":false,"transfer_id":"t-53b832e8"},"name":"transfer_failed","sequence":10,...}

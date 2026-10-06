@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../services/android/resend_staging.dart';
 import '../services/android/send_cache.dart';
 import '../state/daemon_state.dart';
 import '../utils/addr.dart';
@@ -258,6 +259,18 @@ class SendPreparationNotifier extends Notifier<SendPreparationState> {
     if (state.viaError != null) {
       state = state.copyWith(error: state.viaError);
       return null;
+    }
+    // Last gate before the daemon sees a path. The engine only opens real
+    // filesystem paths; a `content://` URI reaches it as a plain "no such file"
+    // io error that names neither the URI nor the fact that a URI was passed at
+    // all, so refuse here where the mistake can still be named.
+    for (final path in state.rootPaths) {
+      if (looksLikeUri(path)) {
+        state = state.copyWith(
+            error: 'Cannot send ${_basename(path)}: this is a document '
+                'reference, not a file on this device. Pick the file again.');
+        return null;
+      }
     }
     state = state.copyWith(sending: true, clearError: true);
     try {

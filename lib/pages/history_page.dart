@@ -9,6 +9,7 @@ import '../providers/history.dart';
 import '../providers/send_preparation.dart';
 import '../services/android/content_uri_helper.dart' show ContentUriChannel;
 import '../services/android/original_ref_store.dart';
+import '../services/android/resend_staging.dart';
 import '../services/file_availability.dart';
 import '../services/ipc/dto.dart';
 import '../state/daemon_state.dart';
@@ -258,22 +259,7 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
     // bytes under it and skips already-received chunks instead of
     // re-transmitting from zero. Only other cases re-open the preparation page.
     if (record.direction == 'send' && record.status == 'partial') {
-      final service = ref.read(daemonStateProvider).service;
-      if (service == null) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Daemon not running')));
-        }
-        return;
-      }
-      try {
-        await service.resumeTransfer(record.transferId);
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Could not resume: $e')));
-        }
-      }
+      await _resumePartial(context, ref);
       return;
     }
     // Other directions/statuses re-open the send-preparation page with the
@@ -281,19 +267,41 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
     // transfer, edit the file set, or drop stale files before sending again.
     final detail =
         await ref.read(transferHistoryProvider.notifier).detail(record.transferId);
-    final entries = <SendFileEntry>[];
-    for (final f in detail.files) {
-      final abs = f.absolutePath;
-      if (abs != null && File(abs).existsSync()) {
-        entries.add(SendFileEntry(
-            path: abs, relativePath: f.relativePath, size: f.size));
-      }
-    }
+    final sources = detail.files
+        .map((f) => ResendSource(
+              absolutePath: f.absolutePath,
+              relativePath: f.relativePath,
+              size: f.size,
+            ))
+        .toList();
+
+    // The recorded `absolute_path` of an Android send is a staging copy the send
+    // cache deletes once the transfer is terminal, so it is normally gone by now.
+    // Resolve each file from its *original reference* into a path that exists
+    // right now, and report the ones that cannot be resolved instead of letting
+    // the daemon fail on a path that no longer exists (which surfaces as a bare
+    // "Transfer Failed io").
+    final stager = ResendStager();
+    final candidates = await stager.plan(sources);
     if (!context.mounted) return;
-    if (entries.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Files not found on disk')));
+
+    final sendable = candidates.where((c) => c.isSendable).toList();
+    final blocked = candidates.where((c) => !c.isSendable).toList();
+    if (sendable.isEmpty) {
+      // Nothing can be resent: say exactly why, per file. No transfer request is
+      // made, so this can never turn into a failed transfer.
+      _showResendBlocked(blocked);
       return;
+    }
+
+    final entries = <SendFileEntry>[];
+    for (final c in sendable) {
+      final path = c.path!;
+      // Guarded by the stager; re-checked here so a URI can never reach the
+      // page that hands paths to the daemon.
+      assertSendablePath(path);
+      entries.add(
+          SendFileEntry(path: path, relativePath: c.label, size: c.size));
     }
     Navigator.push(
       context,
@@ -303,6 +311,76 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
                 initialPeerFingerprint: record.peerDeviceFingerprint,
                 initialPeerName: record.peerName,
               )),
+    );
+    if (blocked.isEmpty) return;
+    // Some files made it and some did not: carry the specific reasons into the
+    // prepare page's one-time notice rather than dropping them silently.
+    final message = _blockedSummary(blocked);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 6)),
+    );
+  }
+
+  /// Resumes a partial send in place, but only once its source is known to still
+  /// be there.
+  ///
+  /// `resume_transfer` restarts the *same* transfer from the manifest the
+  /// daemon already recorded, so it re-reads the very staging copy the previous
+  /// attempt used. That copy is deleted once a transfer reaches a terminal
+  /// state, so a partial send whose copy has since been cleaned up cannot be
+  /// resumed — and attempting it anyway fails as `io`, with no hint that the
+  /// real problem is a missing source file.
+  Future<void> _resumePartial(BuildContext context, WidgetRef ref) async {
+    final record = widget.record;
+    final service = ref.read(daemonStateProvider).service;
+    if (service == null) {
+      _showSnack('Daemon not running');
+      return;
+    }
+    final detail =
+        await ref.read(transferHistoryProvider.notifier).detail(record.transferId);
+    // Entity existence, not `File(..).existsSync()`: a send can be rooted at a
+    // *directory* (the engine recurses it), and File().existsSync() is false
+    // for a directory — which would refuse a perfectly resumable transfer.
+    final missing = detail.files
+        .map((f) => f.absolutePath)
+        .whereType<String>()
+        .where((p) => FileSystemEntity.typeSync(p) == FileSystemEntityType.notFound)
+        .toList();
+    if (missing.isNotEmpty) {
+      // Refuse up front rather than resuming into an `io` failure.
+      _showSnack('Cannot resume: the file this send was reading is gone '
+          '(${missing.first}). The send was interrupted and its temporary copy '
+          'was cleaned up — resend it as a new transfer instead.');
+      return;
+    }
+    try {
+      await service.resumeTransfer(record.transferId);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not resume: $e')));
+      }
+    }
+  }
+
+  /// Explains, per file, why nothing could be resent. Deliberately specific:
+  /// naming the file and the cause is the difference between a user who knows
+  /// what to do and a user filing the same "io" report again.
+  void _showResendBlocked(List<ResendCandidate> blocked) {
+    final reasons = blocked.map((c) => c.reason ?? '${c.label}: unavailable').join('\n');
+    _showSnack('Nothing to resend — $reasons');
+  }
+
+  String _blockedSummary(List<ResendCandidate> blocked) {
+    if (blocked.length == 1) return 'Left out: ${blocked.first.reason}';
+    return 'Left out ${blocked.length} files — first: ${blocked.first.reason}';
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 6)),
     );
   }
 

@@ -1,0 +1,29 @@
+# WP-R11 gates
+
+## flutter analyze (whole package, --no-pub)
+Analyzing privet-app-wpr11...                                   
+No issues found! (ran in 1.8s)
+
+## flutter test (full suite, --no-pub)
+Result: 257 passed, 1 failed.
+The single failure is the pre-existing baseline failure, not introduced here:
+  test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)
+
+Baseline on main: 240 passed, 1 failed (same resolvePosixEndpoint).
+Delta: +17 passed, +0 failed. All 17 are the new tests in
+test/pages/history_resend_test.dart.
+
+## flutter build apk --release
+Built build/app/outputs/flutter-apk/app-release.apk (76.3MB)
+No adb install was performed.
+
+## Unintended-change guard
+`flutter pub get` auto-edited analysis_options.yaml and pubspec.lock; both were
+reverted (`git checkout --`). The final diff touches only:
+  lib/pages/history_page.dart
+  lib/providers/send_preparation.dart
+  lib/services/android/resend_staging.dart (new)
+  test/pages/history_resend_test.dart (new)
+  docs/evidence/wp-r11-* (new)
+No dependency added, AndroidManifest untouched, privet/ and privet-cli untouched.
+c0956926ae44c798d1eec48bd21a0bd4598598f504119df036a2205932199bb0  build/app/outputs/flutter-apk/app-release.apk

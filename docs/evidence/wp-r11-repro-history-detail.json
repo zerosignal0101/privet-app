@@ -1,0 +1,19 @@
+# WP-R11 raw get_history_detail (host repro), source still present
+{
+  "direction": "send",
+  "files": [
+    {
+      "absolute_path": "/tmp/wpr11/repro/stage/payload.bin",
+      "relative_path": "payload.bin",
+      "size": 4096,
+      "status": "completed"
+    }
+  ],
+  "finished_ts": 1791290805058,
+  "peer_device_fingerprint": "71f90d5438592f2fd3630668a2c7b54211699b6f6ae15f063eed830c980cc810",
+  "peer_name": "repro-b",
+  "root_name": null,
+  "started_ts": 1791290804549,
+  "status": "completed",
+  "transfer_id": "t-00b64a82"
+}
