@@ -1,0 +1,59 @@
+# Provenance of the test fixtures in test/support/resolve_fixtures.dart
+
+$ cd /home/zsig/Documents/hermes-workspace/2026-10-06-privet-lan-address-features/evidence && wc -c resolve-trusted.json resolve-untrusted.json && sha256sum resolve-trusted.json resolve-untrusted.json
+216 resolve-trusted.json
+213 resolve-untrusted.json
+429 total
+921ff7e2d4a65e76d4a9325b042d39cc6e7d3f818097e5e563bb8459ca540740  resolve-trusted.json
+ccf6f8a666ad46c944f48c6c74d19c5771c986ccf0f6e65dc10f9dbe0c7b086d  resolve-untrusted.json
+
+$ cat resolve-trusted.json
+{
+  "device_fingerprint": "828312c176632a80f48fa41e57e48655af6d97a838e86b9a6ffd9eb7f374feac",
+  "device_name": "Xiaomi 2410DPN6CC LXR",
+  "found": true,
+  "quic_port": 47808,
+  "tcp_port": 47808,
+  "trusted": true
+}
+
+$ cat resolve-untrusted.json
+{
+  "device_fingerprint": "89507b08f8f34d7bb77a7b241ebefbe3a037d6c9d33a934e597af93249a6e0a0",
+  "device_name": "Thinkpad-P15v-LXR",
+  "found": true,
+  "quic_port": 47808,
+  "tcp_port": 47808,
+  "trusted": false
+}
+
+# The same bytes are inlined verbatim in test/support/resolve_fixtures.dart:
+$ sed -n '13,40p' test/support/resolve_fixtures.dart
+/// The `result` object of a `resolve_address` for a device this daemon already
+/// trusts (a Xiaomi phone).
+const String resolveTrustedJson = '''{
+  "device_fingerprint": "828312c176632a80f48fa41e57e48655af6d97a838e86b9a6ffd9eb7f374feac",
+  "device_name": "Xiaomi 2410DPN6CC LXR",
+  "found": true,
+  "quic_port": 47808,
+  "tcp_port": 47808,
+  "trusted": true
+}
+''';
+
+/// The same call for a device that answered but is not in this daemon's trust
+/// store (a ThinkPad laptop).
+const String resolveUntrustedJson = '''{
+  "device_fingerprint": "89507b08f8f34d7bb77a7b241ebefbe3a037d6c9d33a934e597af93249a6e0a0",
+  "device_name": "Thinkpad-P15v-LXR",
+  "found": true,
+  "quic_port": 47808,
+  "tcp_port": 47808,
+  "trusted": false
+}
+''';
+
+Map<String, dynamic> resolveTrustedPayload() =>
+    jsonDecode(resolveTrustedJson) as Map<String, dynamic>;
+
+Map<String, dynamic> resolveUntrustedPayload() =>

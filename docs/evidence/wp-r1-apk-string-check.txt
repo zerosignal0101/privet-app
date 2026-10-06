@@ -1,0 +1,19 @@
+$ # verify the new user-facing copy is in the shipped AOT snapshot
+$ unzip -o -q build/app/outputs/flutter-apk/app-release.apk 'lib/*/*.so' -d /tmp/apkx
+$ grep -rlF --binary-files=text <string> /tmp/apkx/lib/
+--- string: "but is not paired with this device."
+/tmp/apkx/lib/x86_64/libapp.so
+/tmp/apkx/lib/armeabi-v7a/libapp.so
+/tmp/apkx/lib/arm64-v8a/libapp.so
+--- string: "answered at "
+/tmp/apkx/lib/x86_64/libapp.so
+/tmp/apkx/lib/armeabi-v7a/libapp.so
+/tmp/apkx/lib/arm64-v8a/libapp.so
+--- string: "Enter Pairing Code"
+/tmp/apkx/lib/x86_64/libapp.so
+/tmp/apkx/lib/armeabi-v7a/libapp.so
+/tmp/apkx/lib/arm64-v8a/libapp.so
+--- string: "No device answered"
+/tmp/apkx/lib/x86_64/libapp.so
+/tmp/apkx/lib/armeabi-v7a/libapp.so
+/tmp/apkx/lib/arm64-v8a/libapp.so

@@ -1,0 +1,5 @@
+Running Gradle task 'assembleRelease'...                        
+Picked up JAVA_TOOL_OPTIONS: -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=4568 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=4568 -Dhttp.nonProxyHosts=localhost|127.0.0.1|10.*|172.16.*|192.168.*
+Font asset "MaterialIcons-Regular.otf" was tree-shaken, reducing it from 1645184 to 8392 bytes (99.5% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
+Running Gradle task 'assembleRelease'...                           42.3s
+✓ Built build/app/outputs/flutter-apk/app-release.apk (76.2MB)

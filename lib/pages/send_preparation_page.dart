@@ -415,8 +415,21 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
     // Something is there, but it is not a device this one has: a code is the
     // only way to learn who it is. The ports that just answered are the ones to
     // pair on.
+    //
+    // The dialog names the answerer first. A bare code prompt cannot tell the
+    // user "this really is a different identity" from "the device I already
+    // paired did not get recognised", and those two look identical from here —
+    // both are just a box asking for six digits. Showing the name and enough of
+    // the fingerprint to match against Known Devices turns the prompt into
+    // something the user can check before entering anything.
+    final notice = describeUnpairedAnswerer(
+      name: resolved.deviceName ?? parsed.ip,
+      fingerprint: resolved.deviceFingerprint,
+      address: parsed.ip,
+    );
     final ok = await _enterTheirCode(
       title: 'Enter Pairing Code',
+      notice: notice,
       onPair: (code) => service.pair(
           ip: parsed.ip,
           quicPort: resolved.quicPort,
@@ -481,12 +494,14 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
   /// displaying, and [onPair] completes the exchange with the daemon.
   Future<bool> _enterTheirCode({
     String title = 'Enter Their Code',
+    String? notice,
     required Future<dynamic> Function(String code) onPair,
   }) async {
     final result = await showDialog<({String? value, bool ok, String? error})>(
       context: context,
       builder: (ctx) => _TextEntryDialog(
         title: title,
+        notice: notice == null ? null : _AnswererNotice(notice),
         label: '6-digit code',
         hint: '123456',
         submitLabel: 'Pair',
@@ -1192,6 +1207,7 @@ class _TextEntryDialog extends StatefulWidget {
     required this.onSubmit,
     this.keyboardType,
     this.helper,
+    this.notice,
   });
 
   final String title;
@@ -1202,6 +1218,10 @@ class _TextEntryDialog extends StatefulWidget {
 
   /// Optional secondary line under the field (format guidance, defaults).
   final String? helper;
+
+  /// Optional block rendered above the field. Used to say *who* is on the
+  /// other end before asking for anything from them.
+  final Widget? notice;
 
   /// Runs the value the user typed. Returning `(ok: true)` pops the dialog;
   /// throwing pops with an error record the caller shows.
@@ -1238,16 +1258,26 @@ class _TextEntryDialogState extends State<_TextEntryDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.title),
-      content: TextField(
-        controller: _controller,
-        decoration: InputDecoration(
-          labelText: widget.label,
-          hintText: widget.hint,
-          helperText: widget.helper,
-          helperMaxLines: 3,
-        ),
-        keyboardType: widget.keyboardType,
-        autofocus: true,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (widget.notice case final notice?) ...[
+            notice,
+            const SizedBox(height: 16),
+          ],
+          TextField(
+            controller: _controller,
+            decoration: InputDecoration(
+              labelText: widget.label,
+              hintText: widget.hint,
+              helperText: widget.helper,
+              helperMaxLines: 3,
+            ),
+            keyboardType: widget.keyboardType,
+            autofocus: true,
+          ),
+        ],
       ),
       actions: [
         TextButton(
@@ -1255,6 +1285,67 @@ class _TextEntryDialogState extends State<_TextEntryDialog> {
             child: const Text('Cancel')),
         FilledButton(onPressed: _submit, child: Text(widget.submitLabel)),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Who answered
+// ---------------------------------------------------------------------------
+
+/// A fingerprint trimmed to head and tail — `89507b08…e0a0` — so it can be
+/// compared against the Known Devices list and still fits one line of a
+/// dialog. [shortFingerprint] (utils/format.dart) keeps the first 16 instead;
+/// this one deliberately keeps *both* ends, because the answerer's last
+/// characters are what distinguish it from a device paired under a similar
+/// prefix. A fingerprint too short to trim is shown whole rather than mangled.
+String fingerprintHeadTail(String fingerprint) {
+  const head = 8;
+  const tail = 4;
+  if (fingerprint.length <= head + tail) return fingerprint;
+  return '${fingerprint.substring(0, head)}…'
+      '${fingerprint.substring(fingerprint.length - tail)}';
+}
+
+/// The sentence shown before a pairing code is asked for, naming the device
+/// that answered the dialled address.
+///
+/// This exists because a code prompt on its own is a blind end: it asks the
+/// user to trust an exchange while telling them nothing about what is on the
+/// other end, so a device that *is* already known — paired elsewhere, on
+/// another network, at an address this one has never recorded — is
+/// indistinguishable from a stranger, and the user has no way to tell "this is
+/// a different identity" apart from "the fix did not work". Naming the device
+/// and showing enough of its fingerprint makes both readings checkable against
+/// the Known Devices list before any code is entered.
+String describeUnpairedAnswerer({
+  required String name,
+  required String address,
+  String? fingerprint,
+}) {
+  final who = (fingerprint == null || fingerprint.isEmpty)
+      ? name
+      : '$name (${fingerprintHeadTail(fingerprint)})';
+  return '$who answered at $address but is not paired with this device.';
+}
+
+/// Renders [describeUnpairedAnswerer]'s sentence above the pairing-code field.
+class _AnswererNotice extends StatelessWidget {
+  const _AnswererNotice(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(text, style: TextStyle(color: scheme.onSurfaceVariant)),
     );
   }
 }

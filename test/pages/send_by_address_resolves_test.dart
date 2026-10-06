@@ -18,6 +18,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:privet_app/pages/send_preparation_page.dart';
 import 'package:privet_app/providers/send_preparation.dart';
 
+import '../support/resolve_fixtures.dart';
 import '../support/test_daemon.dart';
 
 /// Bounded pump helper: enough frames for the providers the page reads on build
@@ -38,29 +39,22 @@ const _runtimeConfig = {
   'save_dir': r'C:\received',
 };
 
-/// The `resolve_address` answer for a device this daemon already has.
-Map<String, dynamic> _resolvedTrusted({
-  String fingerprint = 'fp-phone',
-  String name = 'phone',
-}) =>
-    {
-      'found': true,
-      'device_fingerprint': fingerprint,
-      'device_name': name,
-      'trusted': true,
-      'quic_port': 47808,
-      'tcp_port': 47808,
-    };
+/// The `resolve_address` answer for a device this daemon already has, as a real
+/// daemon actually sent it.
+Map<String, dynamic> _resolvedTrusted() => resolveTrustedPayload();
 
-/// The `resolve_address` answer for something that answered but is unknown.
-Map<String, dynamic> _resolvedStranger(String name) => {
-      'found': true,
-      'device_fingerprint': 'fp-stranger',
-      'device_name': name,
-      'trusted': false,
-      'quic_port': 47808,
-      'tcp_port': 47808,
-    };
+/// The `resolve_address` answer for something that answered but is unknown,
+/// likewise a real capture.
+Map<String, dynamic> _resolvedStranger() => resolveUntrustedPayload();
+
+/// The Xiaomi from the real trusted capture.
+const _trustedFingerprint =
+    '828312c176632a80f48fa41e57e48655af6d97a838e86b9a6ffd9eb7f374feac';
+const _trustedName = 'Xiaomi 2410DPN6CC LXR';
+
+/// The ThinkPad from the real untrusted capture.
+const _strangerFingerprint =
+    '89507b08f8f34d7bb77a7b241ebefbe3a037d6c9d33a934e597af93249a6e0a0';
 
 /// One real file on disk; testWidgets' FakeAsync zone never completes awaited
 /// disk I/O, so every disk touch here is synchronous.
@@ -130,7 +124,7 @@ void main() {
         pairCalled = true;
         return okResponse(id, 'pairing_result', {
           'paired': true,
-          'device_fingerprint': 'fp-phone',
+          'device_fingerprint': _trustedFingerprint,
         });
       },
     }));
@@ -153,8 +147,8 @@ void main() {
     // The recipient is the device that answered, and the typed address is pinned
     // as the dial target.
     final state = daemon.container.read(sendPreparationProvider);
-    expect(state.peerFingerprint, 'fp-phone');
-    expect(state.peerName, 'phone');
+    expect(state.peerFingerprint, _trustedFingerprint);
+    expect(state.peerName, _trustedName);
     expect(state.viaIp, '10.29.252.2');
     expect(state.viaError, isNull);
   });
@@ -171,8 +165,8 @@ void main() {
       'get_runtime_config': (id, _) =>
           okResponse(id, 'runtime_config', _runtimeConfig),
       'list_trusted': (id, _) => listTrustedResponse(id, [
-            trustedPeer('fp-phone',
-                name: 'phone',
+            trustedPeer(_trustedFingerprint,
+                name: _trustedName,
                 addresses: [
                   // The old network — nothing in common with what was typed.
                   trustedPeerAddress('192.168.1.20', 47808, 47808, 3000),
@@ -184,7 +178,7 @@ void main() {
         pairCalled = true;
         return okResponse(id, 'pairing_result', {
           'paired': true,
-          'device_fingerprint': 'fp-phone',
+          'device_fingerprint': _trustedFingerprint,
         });
       },
     }));
@@ -196,7 +190,7 @@ void main() {
     expect(pairCalled, isFalse);
     expect(find.text('Enter Pairing Code'), findsNothing);
     final state = daemon.container.read(sendPreparationProvider);
-    expect(state.peerFingerprint, 'fp-phone');
+    expect(state.peerFingerprint, _trustedFingerprint);
     expect(state.viaIp, '10.29.218.79');
   });
 
@@ -208,12 +202,12 @@ void main() {
       'get_runtime_config': (id, _) =>
           okResponse(id, 'runtime_config', _runtimeConfig),
       'resolve_address': (id, _) =>
-          okResponse(id, 'resolved_address', _resolvedStranger('laptop')),
+          okResponse(id, 'resolved_address', _resolvedStranger()),
       'pair': (id, _) {
         pairCalled = true;
         return okResponse(id, 'pairing_result', {
           'paired': true,
-          'device_fingerprint': 'fp-stranger',
+          'device_fingerprint': _strangerFingerprint,
         });
       },
     }));
