@@ -283,6 +283,46 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
     // the daemon fail on a path that no longer exists (which surfaces as a bare
     // "Transfer Failed io").
     final stager = ResendStager();
+
+    // A send that came from a picked FOLDER is re-staged as a whole tree and
+    // re-opened as ONE entry, not one entry per file. Resolving each recorded
+    // file separately and handing the page a flat list is what a "resend this
+    // folder" must not do: the preparation page expands a directory entry by
+    // walking it, so a flat per-file list would both lose the nesting and send
+    // the files as N independent roots.
+    final treeRoot = await stager.treeRootOf(sources);
+    if (!context.mounted) return;
+    if (treeRoot != null) {
+      final restaged = await stager.restageTreeRoot(treeRoot);
+      if (!context.mounted) return;
+      if (!restaged.isSendable) {
+        _showResendBlocked([
+          ResendCandidate(
+            label: detail.rootName ?? 'folder',
+            size: 0,
+            reason: restaged.reason,
+          ),
+        ]);
+        return;
+      }
+      final root = restaged.rootPath!;
+      // Guarded by the stager; re-checked so a URI can never reach the page that
+      // hands paths to the daemon.
+      assertSendablePath(root);
+      _openPreparation(
+        context,
+        record,
+        // A directory entry, so the page walks the tree it is given and shows
+        // the same hierarchy the user picked.
+        <SendFileEntry>[SendFileEntry(
+          path: root,
+          relativePath: detail.rootName ?? _basename(root),
+          isDir: true,
+        )],
+      );
+      return;
+    }
+
     final candidates = await stager.plan(sources);
     if (!context.mounted) return;
 
@@ -304,6 +344,25 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
       entries.add(
           SendFileEntry(path: path, relativePath: c.label, size: c.size));
     }
+    _openPreparation(context, record, entries);
+    if (blocked.isEmpty) return;
+    // Some files made it and some did not: carry the specific reasons into the
+    // prepare page's one-time notice rather than dropping them silently.
+    final message = _blockedSummary(blocked);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 6)),
+    );
+  }
+
+  /// Opens the send-preparation page for [record] with [entries] pre-loaded.
+  ///
+  /// Both re-open paths (the finished-send resend and the tree-rooted variant)
+  /// land here, so the recipient pre-fill and the page's shape are decided once.
+  void _openPreparation(
+    BuildContext context,
+    HistoryEntryDto record,
+    List<SendFileEntry> entries,
+  ) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -313,13 +372,18 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
                 initialPeerName: record.peerName,
               )),
     );
-    if (blocked.isEmpty) return;
-    // Some files made it and some did not: carry the specific reasons into the
-    // prepare page's one-time notice rather than dropping them silently.
-    final message = _blockedSummary(blocked);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 6)),
-    );
+  }
+
+  /// The last path segment of [path], or the whole path when it has none.
+  ///
+  /// Used to name a re-staged tree when the history row recorded no
+  /// `root_name`; never dereferenced, so a path it cannot split is returned
+  /// unchanged rather than throwing.
+  String _basename(String path) {
+    final norm = path.replaceAll('\\', '/');
+    final idx = norm.lastIndexOf('/');
+    if (idx < 0 || idx == norm.length - 1) return path;
+    return norm.substring(idx + 1);
   }
 
   /// Resumes a partial send in place.
@@ -382,10 +446,45 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
       return;
     }
 
-    // Some recorded path is gone. Fall back to resolving every file from its
-    // original reference with the same `ResendStager` the finished-transfer
-    // resend already uses.
+    // Some recorded path is gone.
     final stager = ResendStager();
+
+    // A send that came from a picked FOLDER is re-staged as a whole tree, and
+    // resumed with the new root as the single override. Not because the
+    // per-file path is merely incomplete for a folder, but because it is wrong:
+    // an override is a list of individual paths, so the engine derives
+    // `relative_path = file_name` for each and the nested set comes back flat,
+    // which `check_override_matches_intent` refuses. One directory override is
+    // recursed by `prepare_paths`, so the hierarchy survives.
+    final treeRoot = await stager.treeRootOf(sources);
+    if (!context.mounted) return;
+    if (treeRoot != null) {
+      final restaged = await stager.restageTreeRoot(treeRoot);
+      if (!context.mounted) return;
+      if (!restaged.isSendable) {
+        _showSnack('Cannot resume — ${restaged.reason}\n'
+            'Nothing was sent. This send was interrupted and its temporary copy '
+            'was cleaned up; pick the folder again to resume it.');
+        return;
+      }
+      final root = restaged.rootPath!;
+      // Guarded by the stager; re-checked so a `content://` string can never
+      // reach the daemon.
+      assertSendablePath(root);
+      // Registered the same way per-file copies are, so the fresh tree is
+      // deleted on THIS transfer's terminal event rather than leaking.
+      await ref
+          .read(sendPreparationProvider.notifier)
+          .trackTempPathsFor(record.transferId, [root]);
+      if (!context.mounted) return;
+      await _issueResume(context, service, record.transferId, paths: [root]);
+      return;
+    }
+
+    // No tree reference: fall back to resolving every file from its original
+    // reference with the same `ResendStager` the finished-transfer resend uses.
+    // This stays the honest, per-file failure when the send was a multi-file
+    // pick whose sources are gone.
     final candidates = await stager.plan(sources);
     if (!context.mounted) return;
 

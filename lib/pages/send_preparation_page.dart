@@ -654,7 +654,13 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
       // Staging copies are cleaned up per-transfer (and when a selection is
       // discarded/removed), so no blanket wipe here — that would delete files a
       // still-running transfer is reading.
-      final root = await ContentUriDirectoryHelper.pickAndCacheDirectory();
+      //
+      // `pickAndRecord` also persists the picked tree URI against the staged
+      // root, the way `_pickFiles` persists each file's `content://` reference.
+      // Without it this pick is a one-shot: the staged copy is deleted with the
+      // send cache and nothing would remember the folder, so an interrupted
+      // folder send could be neither resumed nor re-sent.
+      final root = await ContentUriDirectoryHelper.pickAndRecord();
       if (root != null) {
         ref.read(sendPreparationProvider.notifier).addFiles([root]);
       }

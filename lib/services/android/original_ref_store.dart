@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Where a file the user handed us actually came from.
@@ -61,6 +62,22 @@ OriginalRef? normalizeOriginalRef(String? raw) {
 
 /// Persistent staged-path -> original-reference map.
 ///
+/// ### It also keys a picked *directory* root
+///
+/// The key is an opaque path string, so a staged **directory** root can be
+/// keyed by the very same call — `record(rootPath, ref)` — and
+/// `lookup(rootPath)` finds it again. That is what lets a picked folder be
+/// re-staged as a whole tree (WP-R15): the tree URI is recorded against the
+/// staged root, and when the send cache later deletes that root, the URI is
+/// still reachable through this store.
+///
+/// This is deliberate, not an accident of the key type: a parallel "tree
+/// store" would mean a second persistence file, a second eviction budget and a
+/// second failure mode for what is the same fact about the same staged path. A
+/// per-file reference is recorded under a file path and a tree reference under
+/// a directory path, so the two never collide — `ResendStager` tells them apart
+/// by looking a *directory* ancestor up, never a file one.
+///
 /// ### Why the key is the staged path
 ///
 /// The staged path is the value the daemon echoes back as a history row's
@@ -100,6 +117,19 @@ class OriginalRefStore {
   /// other's read-modify-write of the map.
   static Future<void> _queue = Future<void>.value();
 
+  /// Test hook: keep the mapping in memory instead of in SharedPreferences.
+  ///
+  /// The same trick as `SendCache.rootOverride`, for the same reason. A widget
+  /// test's fake clock does not reliably carry a SharedPreferences write made
+  /// under `runAsync` into a later read performed by the widget under test, so
+  /// a page-level test that must observe a recorded reference would see none and
+  /// take the wrong branch. With a map here the same production
+  /// `record`/`lookup` logic runs, synchronously, and the page test exercises
+  /// the real code. Null means "use SharedPreferences", which is every real
+  /// call.
+  @visibleForTesting
+  static Map<String, String>? inMemoryForTesting;
+
   /// Records that the file staged at [stagedPath] came from [ref].
   static Future<void> record(String stagedPath, OriginalRef ref) {
     if (stagedPath.isEmpty) return Future<void>.value();
@@ -111,6 +141,16 @@ class OriginalRefStore {
   }
 
   static Future<void> _record(String stagedPath, OriginalRef ref) async {
+    final memory = inMemoryForTesting;
+    if (memory != null) {
+      // Re-inserting moves the key to the newest position for eviction order.
+      memory.remove(stagedPath);
+      memory[stagedPath] = ref.value;
+      while (memory.length > _maxEntries) {
+        memory.remove(memory.keys.first);
+      }
+      return;
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
       final entries = _read(prefs);
@@ -131,6 +171,8 @@ class OriginalRefStore {
   /// (e.g. a row written before this existed, or one that was evicted).
   static Future<OriginalRef?> lookup(String? stagedPath) async {
     if (stagedPath == null || stagedPath.isEmpty) return null;
+    final memory = inMemoryForTesting;
+    if (memory != null) return normalizeOriginalRef(memory[stagedPath]);
     try {
       final prefs = await SharedPreferences.getInstance();
       return normalizeOriginalRef(_read(prefs)[stagedPath]);
@@ -141,6 +183,8 @@ class OriginalRefStore {
 
   /// Every current mapping, for diagnostics and tests.
   static Future<Map<String, String>> dump() async {
+    final memory = inMemoryForTesting;
+    if (memory != null) return Map<String, String>.from(memory);
     try {
       final prefs = await SharedPreferences.getInstance();
       return Map<String, String>.from(_read(prefs));
@@ -151,6 +195,11 @@ class OriginalRefStore {
 
   /// Drops all recorded mappings.
   static Future<void> clear() async {
+    final memory = inMemoryForTesting;
+    if (memory != null) {
+      memory.clear();
+      return;
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_key);
