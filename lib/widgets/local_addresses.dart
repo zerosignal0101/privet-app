@@ -22,15 +22,46 @@ class LocalAddressesSection extends StatelessWidget {
 
   const LocalAddressesSection({super.key, required this.addrs});
 
+  /// The host-wide listening ports, when every reported address carries the
+  /// same pair.
+  ///
+  /// There is one pair for the whole host: the daemon binds once, and
+  /// `local_addr_dtos` stamps the same `quic_port`/`tcp_port` onto every
+  /// address it reports. Repeating "QUIC x · TCP y" under each address
+  /// therefore said the same thing once per network interface, so it is shown
+  /// once, under the heading.
+  ///
+  /// Null means the addresses genuinely disagree: then no single pair stands
+  /// for them and each address keeps its own line rather than being labelled
+  /// with a port it does not use.
+  static (int, int)? _commonPorts(List<LocalAddrDto> addrs) {
+    if (addrs.isEmpty) return null;
+    final first = addrs.first;
+    final uniform = addrs.every(
+        (a) => a.quicPort == first.quicPort && a.tcpPort == first.tcpPort);
+    return uniform ? (first.quicPort, first.tcpPort) : null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final common = _commonPorts(addrs);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Text('This Machine',
-              style: Theme.of(context).textTheme.titleMedium),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('This Machine',
+                  style: Theme.of(context).textTheme.titleMedium),
+              if (common != null)
+                Text(
+                  'QUIC ${common.$1} · TCP ${common.$2}',
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+            ],
+          ),
         ),
         if (addrs.isEmpty)
           const Padding(
@@ -41,7 +72,7 @@ class LocalAddressesSection extends StatelessWidget {
             ),
           )
         else
-          ...addrs.map((a) => _LocalAddrTile(addr: a)),
+          ...addrs.map((a) => _LocalAddrTile(addr: a, showPorts: common == null)),
       ],
     );
   }
@@ -50,7 +81,11 @@ class LocalAddressesSection extends StatelessWidget {
 class _LocalAddrTile extends StatelessWidget {
   final LocalAddrDto addr;
 
-  const _LocalAddrTile({required this.addr});
+  /// Whether this tile has to state its own ports, which it only does when they
+  /// are not the pair already shown under the heading.
+  final bool showPorts;
+
+  const _LocalAddrTile({required this.addr, required this.showPorts});
 
   @override
   Widget build(BuildContext context) {
@@ -65,10 +100,12 @@ class _LocalAddrTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontSize: 14, fontFamily: 'monospace'),
       ),
-      subtitle: Text(
-        'QUIC ${addr.quicPort} · TCP ${addr.tcpPort}',
-        style: const TextStyle(fontSize: 11, color: Colors.grey),
-      ),
+      subtitle: !showPorts
+          ? null
+          : Text(
+              'QUIC ${addr.quicPort} · TCP ${addr.tcpPort}',
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
       trailing: IconButton(
         icon: const Icon(Icons.copy, size: 18),
         tooltip: 'Copy address',

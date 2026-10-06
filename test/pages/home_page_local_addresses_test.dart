@@ -46,11 +46,10 @@ Future<void> _pumpHome(WidgetTester tester, TestDaemon daemon) async {
 }
 
 void main() {
-  testWidgets('renders every local address, with ports and a copy button each',
-      (tester) async {
+  testWidgets('renders every local address, with a copy button each', (tester) async {
     final daemon = await _bootHome([
       _addr('10.29.210.120', 47808, 47808),
-      _addr('192.168.1.7', 47808, 47810),
+      _addr('192.168.1.7', 47808, 47808),
       _addr('fe80::1c2b:3d4e', 47808, 47808),
     ]);
     await _pumpHome(tester, daemon);
@@ -64,12 +63,29 @@ void main() {
     // IPv6 is bracketed so the port is not ambiguous.
     expect(find.text('[fe80::1c2b:3d4e]:47808'), findsOneWidget);
 
-    // QUIC and TCP ports are both surfaced (they may differ).
-    expect(find.text('QUIC 47808 · TCP 47808'), findsNWidgets(2));
-    expect(find.text('QUIC 47808 · TCP 47810'), findsOneWidget);
+    // The host has one listening pair, so it is stated once under the heading
+    // instead of once per address. (It used to be repeated under every address,
+    // which said the same thing once per network interface.)
+    expect(find.text('QUIC 47808 · TCP 47808'), findsOneWidget);
 
     // One copy button per address.
     expect(find.byIcon(Icons.copy), findsNWidgets(3));
+  });
+
+  testWidgets('addresses whose ports differ each state their own', (tester) async {
+    // The daemon stamps one pair onto every address it reports, so this does
+    // not happen in practice; if it ever does, no single pair may stand for
+    // both and an address must not be labelled with a port it does not use.
+    final daemon = await _bootHome([
+      _addr('10.29.210.120', 47808, 47808),
+      _addr('192.168.1.7', 47808, 47810),
+    ]);
+    await _pumpHome(tester, daemon);
+
+    // One line per address, and no extra host-wide line claiming 47808/47808
+    // for both.
+    expect(find.text('QUIC 47808 · TCP 47808'), findsOneWidget);
+    expect(find.text('QUIC 47808 · TCP 47810'), findsOneWidget);
   });
 
   testWidgets('missing local_addrs field shows a notice, not an empty block',
