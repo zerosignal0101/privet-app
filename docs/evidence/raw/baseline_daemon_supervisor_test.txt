@@ -1,0 +1,11 @@
+00:00 +0: loading /tmp/r16-baseline/test/services/daemon_supervisor_test.dart
+00:00 +0: resolvePosixEndpoint mirrors the daemon default (POSIX)
+00:00 +0 -1: resolvePosixEndpoint mirrors the daemon default (POSIX) [E]
+  Unsupported operation: Cannot modify unmodifiable map
+  dart:collection                                   _UnmodifiableMapMixin.[]=
+  test/services/daemon_supervisor_test.dart 180:25  main.<fn>
+  
+00:00 +0 -1: Some tests failed.
+
+Failing tests:
+  /tmp/r16-baseline/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)

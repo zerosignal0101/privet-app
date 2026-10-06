@@ -62,6 +62,11 @@ void main() {
               trustedPeerAddress('fe80::1c2b:3d4e', 47808, 47808, 1000),
             ]),
           ]),
+      // The page probes the selected receiver's remembered address once on
+      // entry, because its reachability verdict reads the same input the home
+      // page does. This test is about the box, not about whether the address
+      // answers, so "nobody is there" is the neutral answer.
+      'resolve_address': (id, _) => resolveNotFoundResponse(id),
       'send': (id, params) {
         sendCalled = true;
         return okResponse(id, 'transfer_queued', {'transfer_id': 't-via'});
@@ -112,6 +117,7 @@ void main() {
             trustedPeer('trusted-fp',
                 addresses: [trustedPeerAddress('10.29.210.120', 47808, 47808, 3000)]),
           ]),
+      'resolve_address': (id, _) => resolveNotFoundResponse(id),
       'send': (id, params) {
         sent = Map<String, dynamic>.from(params);
         return okResponse(id, 'transfer_queued', {'transfer_id': 't-off'});
@@ -134,10 +140,12 @@ void main() {
     ));
     await _settleFrames(tester);
 
-    // 'friend' never broadcasts, so it is offline — but the pinned address
-    // still lets the send through.
+    // 'friend' never broadcasts and its address did not answer, so the page
+    // says exactly that — naming the address it tried — instead of the old
+    // "not discoverable" wording, which asserted a cause the probe never
+    // established. The pinned address still lets the send through.
     expect(find.textContaining('is offline'), findsNothing);
-    expect(find.textContaining('not discoverable'), findsWidgets);
+    expect(find.textContaining('No answer at 10.29.210.120'), findsWidgets);
 
     await tester.tap(find.widgetWithText(FilledButton, 'Send'));
     await _settleFrames(tester);

@@ -60,6 +60,99 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
   // daemon QUIC_PORT / TCP_PORT, used when the user types a bare IP
   static const int _defaultPort = kDefaultPort;
 
+  // The one-shot guards for the page's entry-time actions. Each is a single
+  // bounded operation, not a subscription: no timer to leak and no loop to spin.
+  bool _discoveryLoadStarted = false;
+  bool _discoveryReady = false;
+  bool _probeStarted = false;
+  String? _adoptedAddress;
+
+  /// Makes sure discovery has actually been asked before the verdict is taken.
+  ///
+  /// The verdict needs *both* inputs — a beacon, and the address probe — but
+  /// `peerListProvider` starts empty and is only filled by an explicit refresh.
+  /// The home page does that on its own refresh, so a device opened from a Known
+  /// Devices row arrived with discovery already loaded. Entering Send Files
+  /// directly did not, and a peer list that was never fetched is
+  /// indistinguishable from a device that is not broadcasting: the page would
+  /// have called every online device `unknown` and then, on a remembered
+  /// address, have spent a probe on a device that was already on the air.
+  ///
+  /// One load on entry, then the same composed verdict the home page reads.
+  void _ensureDiscoveryLoadedOnce() {
+    if (_discoveryLoadStarted) return;
+    _discoveryLoadStarted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await ref.read(peerListProvider.notifier).refresh();
+      if (!mounted) return;
+      // Only now is "this device is not broadcasting" a fact rather than an
+      // artefact of nobody having asked. The verdict below is re-read on the
+      // next build, which the peer list update triggers.
+      setState(() => _discoveryReady = true);
+    });
+  }
+
+  /// Asks the single question the send page needs about its recipient: "does
+  /// the address you remember still answer as you?"
+  ///
+  /// Discovery cannot answer it — a device on a network that blocks beacons is
+  /// simply absent from the peer list — and the alternative used to be assuming
+  /// the worst and calling the device offline. One bounded probe, driven into
+  /// the same [reachabilityProvider] the home page reads, replaces the guess
+  /// with a fact; after it answers, the page's wording and its send gate agree
+  /// with the row the user just tapped.
+  ///
+  /// Runs at most once per page open, and only when there is a reason to and an
+  /// address to dial. An [TrustedReachability.unknown] verdict is precisely
+  /// "nobody has looked yet", which is the only state where looking helps.
+  void _probeSelectedPeerOnce(
+    String? fingerprint,
+    TrustedPeerDto? peer,
+    bool needsPairing,
+    PeerReachVerdict? verdict,
+  ) {
+    if (_probeStarted) return;
+    // Wait for discovery: until it has loaded, "not online" means "nobody
+    // asked", and probing a device that is already on the air would be a
+    // wasted round trip against an address that may well be stale.
+    if (!_discoveryReady) return;
+    if (fingerprint == null || peer == null || needsPairing) return;
+    if (verdict == null || !verdict.isUnchecked) return;
+    if (peer.addresses.isEmpty) return; // nothing remembered to dial
+    _probeStarted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(reachabilityProvider.notifier).probePeer(peer, isOnline: false);
+    });
+  }
+
+  /// Adopts a reachable device's probed address as the `via` to send through.
+  ///
+  /// A device that is only reachable by address cannot be found by the engine
+  /// — there is no beacon to resolve — so a send without `via` would have
+  /// nothing to dial even though the probe just proved the device is there.
+  /// Using the address the provider recorded is also what keeps the page's own
+  /// invariant true: the address in the box is the address that is sent. No
+  /// second lookup is performed, and a box the user has already filled in is
+  /// never overwritten — that address is a deliberate choice, not a default.
+  void _adoptProbedAddress(String? fingerprint, PeerReachVerdict? verdict) {
+    if (fingerprint == null || verdict == null) return;
+    if (verdict.state != TrustedReachability.reachable) return;
+    final address = verdict.address;
+    if (address == null || address.isEmpty) return;
+    if (_adoptedAddress == address) return;
+    if (ref.read(sendPreparationProvider).viaIp != null) return;
+    _adoptedAddress = address;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Re-check: a user edit or a peer change may have landed in between.
+      final s = ref.read(sendPreparationProvider);
+      if (s.peerFingerprint != fingerprint || s.viaIp != null) return;
+      ref.read(sendPreparationProvider.notifier).setVia(address);
+    });
+  }
+
   void _showSnackBar(String message,
       {Duration duration = const Duration(seconds: 2)}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -180,19 +273,32 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
         : trustedPeers
             .where((t) => t.deviceFingerprint == state.peerFingerprint)
             .firstOrNull;
-    // A trusted recipient that is not currently discovered is offline — the send
-    // must not go through (the daemon would only spin against a dead address).
-    final onlineFps = ref.watch(onlinePeerFingerprintsProvider);
-    final selectedPeerOffline = state.peerFingerprint != null &&
-        !needsPairing &&
-        !onlineFps.contains(state.peerFingerprint);
+    // The one verdict for the selected recipient, from the same provider the
+    // home page's Known Devices rows read. It used to be `p.isOnline` — discovery
+    // alone — which called a device "offline" the moment the user walked in on
+    // it, even when the app had just proved at a remembered address that it was
+    // there. Only a probe that actually asked and got nobody has earned the
+    // word offline.
+    final selectedFp = state.peerFingerprint;
+    final verdict = selectedFp == null
+        ? null
+        : ref.watch(peerReachVerdictProvider(selectedFp));
+    // Both of the page's one-shot reactions to that verdict. No timers and no
+    // polling loop: entering the page is the only trigger, and each action is
+    // a single write guarded to happen once.
+    _ensureDiscoveryLoadedOnce();
+    _probeSelectedPeerOnce(selectedFp, selectedPeer, needsPairing, verdict);
+    _adoptProbedAddress(selectedFp, verdict);
+    final selectedPeerOffline =
+        verdict != null && !needsPairing && verdict.isUnreachable;
 
     final body = Column(
       children: [
         _RecipientSection(
           peerName: state.peerName,
           peerFingerprint: state.peerFingerprint,
-          offline: selectedPeerOffline,
+          statusNote: _recipientNote(verdict),
+          warn: selectedPeerOffline,
           onChangeTap: () => _pickPeer(context, ref),
         ),
         // The address box only makes sense for an already-trusted device: the
@@ -229,29 +335,20 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
             onEnterTheirCode: () => _enterTheirCodeFor(state.peerFingerprint!),
           ),
 
-        if (selectedPeerOffline)
+        // A broadcasting device is the normal case and needs no notice. Every
+        // other state is worth a line, because each of them means something
+        // different: verified present, being checked, checked and absent, or not
+        // yet checked.
+        if (verdict != null &&
+            !needsPairing &&
+            verdict.state != TrustedReachability.online)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Row(
-              children: [
-                const Icon(Icons.cloud_off, size: 14, color: Colors.orange),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    // With an address pinned the offline state is expected, not
-                    // an error: that is exactly the isolation case `via` exists
-                    // for, so the copy must not talk the user out of sending.
-                    state.viaIp != null
-                        ? '${state.peerName ?? 'This device'} is not '
-                            'discoverable — sending to ${state.viaIp} anyway.'
-                        : '${state.peerName ?? 'This device'} is offline — turn '
-                            'it on, enter its address to send without '
-                            'discovery, or choose another recipient.',
-                    style: const TextStyle(
-                        color: Colors.orange, fontSize: 12),
-                  ),
-                ),
-              ],
+            child: _ReachabilityNotice(
+              name: state.peerName ?? 'This device',
+              // Promoted by the `verdict != null` test above.
+              verdict: verdict,
+              viaIp: state.viaIp,
             ),
           ),
 
@@ -330,6 +427,24 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
         ),
       ),
     );
+  }
+
+  /// The short status word on the recipient row, from the one verdict.
+  ///
+  /// Null for a broadcasting device (the normal case, nothing to add to the
+  /// fingerprint). The words match the home page's rows so the two pages read
+  /// the same way about the same device.
+  static String? _recipientNote(PeerReachVerdict? verdict) {
+    if (verdict == null) return null;
+    return switch (verdict.state) {
+      TrustedReachability.online => null,
+      TrustedReachability.reachable => 'reachable',
+      TrustedReachability.probing => 'checking…',
+      TrustedReachability.unreachable => 'offline',
+      // Not "offline": nobody has looked yet, and saying otherwise would claim
+      // a failure that was never observed.
+      TrustedReachability.unknown => 'not checked',
+    };
   }
 
   // -------------------------------------------------------------------------
@@ -776,24 +891,43 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
 
   Future<void> _send(WidgetRef ref) async {
     final s = ref.read(sendPreparationProvider);
-    final onlineFps = ref.read(onlinePeerFingerprintsProvider);
     final fp = s.peerFingerprint;
-    // Guard against sending to a recipient that is not currently online: the
-    // daemon would only retry a dead address and end in a confusing "Internal
-    // Error" tile or a bare Failed history row. Give a clear message instead.
+    // The gate mirrors the verdict the screen is showing, read through the same
+    // provider. That is the whole point of the fix: previously the banner and
+    // this check each asked their own question, so a device the banner called
+    // offline was refused here even while the home page — and the app's own
+    // probe — said it was sitting there at a known address.
     //
-    // An explicit address is the documented way out: a device that cannot be
-    // discovered (client isolation, a beacon-blocking VLAN) is permanently
-    // "offline" here while being perfectly reachable by IP, so the offline gate
-    // must not apply once the user has pinned an address.
-    if (fp != null && !onlineFps.contains(fp) && s.viaIp == null) {
-      ref.read(sendPreparationProvider.notifier).setError(
-            '${s.peerName ?? 'The selected device'} is offline — it can\'t '
-            'receive files right now. Make sure it is running and on the same '
-            'network, then try again, or enter its address below to send '
-            'without discovery.',
-          );
-      return;
+    // So: refuse when the device is not sendable (a probe that asked and got
+    // nobody back, or nobody has been able to answer yet and no address is
+    // pinned to try). An explicit address is the documented way out and always
+    // wins: a device that cannot be discovered (client isolation, a
+    // beacon-blocking VLAN) is permanently absent from discovery while being
+    // perfectly reachable by IP, so this gate must not apply once the user has
+    // pinned an address.
+    if (fp != null && s.viaIp == null) {
+      final verdict = ref.read(peerReachVerdictProvider(fp));
+      if (!verdict.canSend) {
+        ref.read(sendPreparationProvider.notifier).setError(
+              switch (verdict.state) {
+                // The one case that is a real answer rather than a missing one.
+                TrustedReachability.unreachable =>
+                  '${s.peerName ?? 'The selected device'} did not answer at '
+                      '${verdict.address} — it can\'t receive files right now. '
+                      'Make sure it is running, then try again, or enter its '
+                      'address below to send without discovery.',
+                TrustedReachability.probing =>
+                  'Still checking ${s.peerName ?? 'that device'} at '
+                      '${verdict.address} — try again in a moment.',
+                _ =>
+                  '${s.peerName ?? 'The selected device'} has not been heard '
+                      'from and no address is remembered, so there is nothing '
+                      'to send to yet. Enter its address below to send without '
+                      'discovery, or choose another recipient.',
+              },
+            );
+        return;
+      }
     }
     final notifier = ref.read(sendPreparationProvider.notifier);
     final id = await notifier.send();
@@ -807,33 +941,140 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
 }
 
 // ---------------------------------------------------------------------------
+// Reachability notice
+// ---------------------------------------------------------------------------
+
+/// What the page says about the selected recipient, for every state of
+/// [PeerReachVerdict].
+///
+/// The mapping is the same one the home page's Known Devices rows use, and it
+/// exists as one class so the two pages cannot say different things about one
+/// device:
+///
+///  * [TrustedReachability.online] — nothing to say. A beaconing device needs
+///    no address and no probe; this is the normal case.
+///  * [TrustedReachability.reachable] — nothing to warn about either: the
+///    address answered as this very device, which is a real, verified presence.
+///    Its address has been adopted as `via`, so the send has a route.
+///  * [TrustedReachability.probing] — a question is in flight. Say so rather
+///    than guess either way.
+///  * [TrustedReachability.unreachable] — the only state that means "this device
+///    is not there", and the message names the address that was tried, because
+///    "it is offline" is useless to someone who knows which address failed.
+///  * [TrustedReachability.unknown] — nobody has looked yet. This is
+///    emphatically not "offline": saying so would invent a failure out of
+///    silence, and used to be exactly the bug this page had.
+class _ReachabilityNotice extends StatelessWidget {
+  const _ReachabilityNotice({
+    required this.name,
+    required this.verdict,
+    required this.viaIp,
+  });
+
+  final String name;
+  final PeerReachVerdict verdict;
+  final String? viaIp;
+
+  String get _message {
+    final address = verdict.address;
+    return switch (verdict.state) {
+      // A verified presence is good news, and the message names the address the
+      // send will actually use — the same "the box is the route" invariant the
+      // address section holds.
+      // Not rendered — a broadcasting device shows no notice at all — but the
+      // switch stays exhaustive so a future state cannot slip through silently.
+      TrustedReachability.online => '$name is online.',
+      // A verified presence is good news. The wording is the home page's own
+      // ("Reachable at <ip>") so the two pages read the same way about the same
+      // device, and it names the address the send will use.
+      TrustedReachability.reachable =>
+        'Reachable at $address — sending there.',
+      TrustedReachability.probing => 'Checking $name at $address…',
+      // With an address pinned, an unanswered probe is expected rather than an
+      // error: that is exactly the isolation case `via` exists for, so the copy
+      // must not talk the user out of sending.
+      TrustedReachability.unreachable => viaIp != null
+          ? 'No answer at $address — sending to $viaIp anyway.'
+          : 'No answer at $address — $name can\'t receive files right now. '
+              'Make sure it is running, or enter its address to send without '
+              'discovery.',
+      TrustedReachability.unknown => address == null
+          ? '$name has not been heard from and no address is remembered, so '
+              'there is nothing to send to yet. That is not the same as being '
+              'offline — enter its address to send without discovery, or '
+              'choose another recipient.'
+          : '$name has not been checked at $address yet.',
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Only a failed probe is a problem the user must act on; "nobody has
+    // looked yet" is a neutral fact, so it stays grey rather than orange, and
+    // a verified presence is good news, not a warning.
+    final color = switch (verdict.state) {
+      TrustedReachability.reachable => Colors.green.shade700,
+      TrustedReachability.unreachable || TrustedReachability.probing =>
+        Colors.orange,
+      _ => Colors.grey,
+    };
+    final icon = switch (verdict.state) {
+      TrustedReachability.reachable => Icons.check_circle_outline,
+      TrustedReachability.probing => Icons.hourglass_empty,
+      TrustedReachability.unreachable => Icons.cloud_off,
+      _ => Icons.help_outline,
+    };
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(_message,
+              style: TextStyle(color: color, fontSize: 12)),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Recipient section
 // ---------------------------------------------------------------------------
 
 class _RecipientSection extends StatelessWidget {
   final String? peerName;
   final String? peerFingerprint;
-  final bool offline;
+
+  /// Short status word for the subtitle, or null for the normal (online) case.
+  ///
+  /// Deliberately the same vocabulary as the notice below it and as the home
+  /// page's rows: "offline" is reserved for a probe that actually failed, so a
+  /// device nobody has checked yet is never captioned with it.
+  final String? statusNote;
+  final bool warn;
   final VoidCallback onChangeTap;
 
   const _RecipientSection({
     this.peerName,
     this.peerFingerprint,
-    this.offline = false,
+    this.statusNote,
+    this.warn = false,
     required this.onChangeTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final fp = peerFingerprint;
+    final note = statusNote;
     return ListTile(
       leading: Icon(
-        offline ? Icons.cloud_off : Icons.person,
-        color: offline ? Colors.orange : null,
+        warn ? Icons.cloud_off : Icons.person,
+        color: warn ? Colors.orange : null,
       ),
       title: Text(peerName ?? 'No recipient selected'),
       subtitle: fp != null
-          ? Text(offline ? '${shortFingerprint(fp)} · offline' : shortFingerprint(fp))
+          ? Text(note == null ? shortFingerprint(fp) : '${shortFingerprint(fp)} · $note')
           : null,
       trailing: TextButton(onPressed: onChangeTap, child: const Text('Change')),
     );

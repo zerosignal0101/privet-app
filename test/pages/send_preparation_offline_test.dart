@@ -1,7 +1,12 @@
-// Sending to a Known Device that is not currently broadcasting must not hit the
-// daemon (which would spin against a dead address into an "Internal Error" tile
-// or a bare Failed history row). The send page marks the recipient offline and
-// surfaces a clear error instead.
+// Sending to a Known Device that has no route to it must not hit the daemon
+// (which would spin against a dead address into an "Internal Error" tile or a
+// bare Failed history row). The send page blocks the send and says why.
+//
+// "No route" here means: not broadcasting, and no remembered address, so there
+// is nothing to probe. That is `unknown`, and the page must call it that rather
+// than the word "offline" — see send_page_reachability_test.dart for the states
+// that legitimately are offline, and for the reachable-but-not-discovered case
+// that used to be wrongly blocked here.
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -76,16 +81,21 @@ void main() {
     ));
     await _settleFrames(tester);
 
-    // 'friend' is trusted but has not broadcast -> clearly marked offline.
-    expect(find.textContaining('is offline'), findsWidgets);
+    // 'friend' is trusted but has not broadcast, and has no remembered address,
+    // so there is nothing to probe. That is "not checked", not "offline": the
+    // page must not claim a failure it never observed.
+    expect(find.textContaining('is offline'), findsNothing);
+    expect(find.textContaining('has not been heard from'), findsWidgets);
 
     // Pressing Send must not call the daemon.
     await tester.tap(find.widgetWithText(FilledButton, 'Send'));
     await _settleFrames(tester);
 
     expect(sendCalled, isFalse,
-        reason: 'an offline recipient must never reach the daemon');
-    expect(find.textContaining("can't receive files"), findsOneWidget);
+        reason: 'a recipient with no route must never reach the daemon');
+    // The refusal names the real reason, and still offers the way out.
+    expect(find.textContaining('no address is remembered'), findsWidgets);
+    expect(find.textContaining('Enter its address'), findsWidgets);
     expect(tester.takeException(), isNull);
 
     // UncontrolledProviderScope does not own the container; dispose it.

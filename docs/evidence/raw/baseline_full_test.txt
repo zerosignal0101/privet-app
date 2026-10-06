@@ -1,0 +1,289 @@
+00:00 +0: loading /tmp/r16-baseline/test/widgets/transfer_tile_failed_message_test.dart
+00:00 +0: /tmp/r16-baseline/test/widgets/transfer_tile_failed_message_test.dart: rejected shows "peer no longer trusts you" guidance
+00:00 +1: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:00 +2: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:00 +3: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:00 +4: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:00 +5: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +6: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +7: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +8: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +9: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +10: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +11: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +12: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +13: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +14: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +15: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +16: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +17: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +18: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +19: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +20: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +21: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +22: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +23: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +24: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +25: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +26: /tmp/r16-baseline/test/widgets/peer_picker_sheet_test.dart: picker marks offline devices, dedupes trusted, selects online
+00:01 +27: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +28: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +29: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +30: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +31: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +32: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +33: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +34: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +35: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +36: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +37: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +38: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +39: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +40: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +41: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +42: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +43: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +44: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +45: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +46: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:01 +47: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:02 +48: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:02 +49: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:02 +50: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:02 +51: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:02 +52: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:02 +53: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:02 +54: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +55: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +56: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +57: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +58: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +59: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +60: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +61: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +62: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +63: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +64: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +65: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +66: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +67: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +68: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +69: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:02 +70: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +71: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +72: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +73: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +74: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +75: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +76: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +77: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +78: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +79: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +80: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +81: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +82: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +83: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +84: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +85: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +86: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +87: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +88: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +89: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +90: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +91: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +92: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +93: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +94: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +95: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +96: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:03 +97: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:04 +97 -1: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:04 +98 -1: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:04 +99 -1: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:04 +99 -1: /tmp/r16-baseline/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX) [E]
+  Unsupported operation: Cannot modify unmodifiable map
+  dart:collection                                   _UnmodifiableMapMixin.[]=
+  test/services/daemon_supervisor_test.dart 180:25  main.<fn>
+  
+00:04 +100 -1: /tmp/r16-baseline/test/widgets/leave_daemon_running_test.dart: settings shows Leave Daemon Running on desktop
+00:04 +101 -1: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: android fills the whole screen
+00:04 +102 -1: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: android fills the whole screen
+00:04 +103 -1: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: android fills the whole screen
+00:04 +103 -1: /tmp/r16-baseline/test/services/android/content_uri_file_picker_test.dart: 3. a cancelled pick records nothing and does not throw
+[SAF] pickFiles error: PlatformException(SAF_ERROR, no activity, null, null)
+00:04 +104 -1: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: android fills the whole screen
+00:04 +105 -1: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: android fills the whole screen
+00:04 +105 -1: /tmp/r16-baseline/test/services/android/content_uri_file_picker_test.dart: 4b. an entry with an unusable reference still sends, and the others keep theirs
+[SAF] unusable original reference, sending anyway: relative/not-a-reference
+00:04 +106 -1: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: android fills the whole screen
+00:04 +107 -1: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: android fills the whole screen
+00:04 +108 -1: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: android fills the whole screen
+00:04 +109 -1: /tmp/r16-baseline/test/widgets/desktop_frame_test.dart: android fills the whole screen
+00:04 +110 -1: /tmp/r16-baseline/test/providers/transfers_test.dart: incoming offer lifecycle: offered -> progress -> completed
+00:04 +111 -1: /tmp/r16-baseline/test/providers/send_via_test.dart: a valid address is sent as a bare IP in the send request
+00:04 +112 -1: /tmp/r16-baseline/test/providers/send_via_test.dart: a valid address is sent as a bare IP in the send request
+00:04 +113 -1: /tmp/r16-baseline/test/providers/send_via_test.dart: a valid address is sent as a bare IP in the send request
+00:04 +114 -1: /tmp/r16-baseline/test/providers/send_via_test.dart: a valid address is sent as a bare IP in the send request
+00:04 +115 -1: /tmp/r16-baseline/test/providers/send_via_test.dart: a valid address is sent as a bare IP in the send request
+00:04 +116 -1: /tmp/r16-baseline/test/providers/send_via_test.dart: a valid address is sent as a bare IP in the send request
+00:04 +117 -1: /tmp/r16-baseline/test/providers/send_via_test.dart: a valid address is sent as a bare IP in the send request
+00:04 +118 -1: /tmp/r16-baseline/test/providers/transfers_test.dart: auto-accept is picked up from the daemon runtime config on boot
+00:04 +119 -1: /tmp/r16-baseline/test/providers/transfers_test.dart: auto-accept is picked up from the daemon runtime config on boot
+00:04 +120 -1: /tmp/r16-baseline/test/providers/transfers_test.dart: auto-accept is picked up from the daemon runtime config on boot
+00:04 +121 -1: /tmp/r16-baseline/test/providers/send_via_test.dart: no address means the request omits via entirely
+00:04 +122 -1: /tmp/r16-baseline/test/providers/transfers_test.dart: auto-accepted receive resolves via the wire (offered -> progress -> completed)
+00:04 +123 -1: /tmp/r16-baseline/test/providers/transfers_test.dart: auto-accepted receive resolves via the wire (offered -> progress -> completed)
+00:04 +124 -1: /tmp/r16-baseline/test/providers/transfers_test.dart: auto-accepted receive resolves via the wire (offered -> progress -> completed)
+00:04 +125 -1: /tmp/r16-baseline/test/providers/transfers_test.dart: auto-accepted receive resolves via the wire (offered -> progress -> completed)
+00:04 +126 -1: /tmp/r16-baseline/test/providers/transfers_test.dart: auto-accepted receive resolves via the wire (offered -> progress -> completed)
+00:04 +127 -1: /tmp/r16-baseline/test/providers/transfers_test.dart: auto-accepted receive resolves via the wire (offered -> progress -> completed)
+00:04 +128 -1: /tmp/r16-baseline/test/providers/transfers_test.dart: a transferring tile that went silent is self-healed even when the daemon is unreachable
+00:05 +129 -1: /tmp/r16-baseline/test/providers/transfers_test.dart: a transferring tile that went silent is self-healed even when the daemon is unreachable
+00:05 +130 -1: /tmp/r16-baseline/test/providers/transfers_test.dart: a transferring tile that went silent is self-healed even when the daemon is unreachable
+00:05 +131 -1: /tmp/r16-baseline/test/providers/transfers_test.dart: a transferring tile that went silent is self-healed even when the daemon is unreachable
+00:05 +132 -1: /tmp/r16-baseline/test/providers/peers_test.dart: peerListProvider upserts on device_discovered and removes on lost
+00:05 +133 -1: /tmp/r16-baseline/test/providers/peers_test.dart: peerListProvider upserts on device_discovered and removes on lost
+00:05 +134 -1: /tmp/r16-baseline/test/providers/peers_test.dart: peerListProvider upserts on device_discovered and removes on lost
+00:05 +135 -1: /tmp/r16-baseline/test/providers/peers_test.dart: peerListProvider upserts on device_discovered and removes on lost
+00:05 +136 -1: /tmp/r16-baseline/test/providers/send_preparation_test.dart: Android send-cache cleanup real (non-cache) files are never deleted
+00:05 +137 -1: /tmp/r16-baseline/test/providers/peers_test.dart: scan results never include the device itself
+00:05 +138 -1: /tmp/r16-baseline/test/providers/pairing_test.dart: pairing request lifecycle
+00:05 +139 -1: /tmp/r16-baseline/test/providers/pairing_test.dart: pairing request lifecycle
+00:05 +140 -1: /tmp/r16-baseline/test/providers/pairing_test.dart: pairing request lifecycle
+00:05 +141 -1: /tmp/r16-baseline/test/providers/history_test.dart: history provider lists, deletes, details and resends
+00:05 +142 -1: /tmp/r16-baseline/test/providers/history_test.dart: history provider lists, deletes, details and resends
+00:05 +143 -1: /tmp/r16-baseline/test/providers/history_test.dart: history provider lists, deletes, details and resends
+00:05 +144 -1: /tmp/r16-baseline/test/providers/pairing_test.dart: successful pairing result refreshes the trusted list
+00:05 +145 -1: /tmp/r16-baseline/test/providers/history_test.dart: terminal events trigger a history refresh
+00:05 +146 -1: /tmp/r16-baseline/test/pages/settings_page_trust_test.dart: Remove Trust forgets; revoked devices stay recoverable
+00:07 +147 -1: /tmp/r16-baseline/test/pages/send_via_peer_switch_test.dart: switching receiver clears the box and sends no via from A
+00:08 +148 -1: /tmp/r16-baseline/test/pages/send_via_peer_switch_test.dart: switching receiver clears the box and sends no via from A
+00:09 +149 -1: /tmp/r16-baseline/test/pages/send_preparation_offline_test.dart: send to an offline recipient shows a clear error and is blocked
+00:09 +150 -1: /tmp/r16-baseline/test/pages/send_preparation_pairing_test.dart: entering the remote code and pairing does not crash the page
+00:09 +151 -1: /tmp/r16-baseline/test/pages/send_preparation_pairing_test.dart: entering the remote code and pairing does not crash the page
+00:09 +152 -1: /tmp/r16-baseline/test/pages/send_preparation_pairing_test.dart: entering the remote code and pairing does not crash the page
+00:09 +153 -1: /tmp/r16-baseline/test/pages/send_preparation_pairing_test.dart: entering the remote code and pairing does not crash the page
+00:09 +154 -1: /tmp/r16-baseline/test/pages/send_preparation_pairing_test.dart: entering the remote code and pairing does not crash the page
+00:09 +155 -1: /tmp/r16-baseline/test/pages/send_preparation_pairing_test.dart: entering the remote code and pairing does not crash the page
+00:10 +156 -1: /tmp/r16-baseline/test/pages/send_preparation_pairing_test.dart: entering the remote code and pairing does not crash the page
+00:10 +157 -1: /tmp/r16-baseline/test/pages/send_by_address_who_answered_test.dart: who answered the address a device already in the trust store is named by the send itself, with no code and no extra step
+00:10 +158 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:10 +159 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:10 +160 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:10 +161 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:10 +162 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:11 +163 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:11 +164 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:11 +165 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:11 +166 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:11 +167 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:11 +168 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:11 +169 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:11 +170 -1: /tmp/r16-baseline/test/pages/home_page_known_online_test.dart: offline known device has no send button; online one does
+00:11 +171 -1: /tmp/r16-baseline/test/pages/home_page_known_online_test.dart: offline known device has no send button; online one does
+00:11 +172 -1: /tmp/r16-baseline/test/pages/home_page_known_online_test.dart: offline known device has no send button; online one does
+00:11 +173 -1: /tmp/r16-baseline/test/pages/home_page_known_online_test.dart: offline known device has no send button; online one does
+00:11 +174 -1: /tmp/r16-baseline/test/pages/home_page_known_online_test.dart: offline known device has no send button; online one does
+00:11 +175 -1: /tmp/r16-baseline/test/pages/home_page_known_online_test.dart: offline known device has no send button; online one does
+00:11 +176 -1: /tmp/r16-baseline/test/pages/home_page_known_online_test.dart: offline known device has no send button; online one does
+00:11 +177 -1: /tmp/r16-baseline/test/pages/home_page_known_online_test.dart: offline known device has no send button; online one does
+00:11 +178 -1: /tmp/r16-baseline/test/pages/home_page_known_online_test.dart: offline known device has no send button; online one does
+00:12 +179 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +180 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +181 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +182 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +183 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +184 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +185 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +186 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +187 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +188 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +189 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +190 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +191 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +192 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +193 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +194 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +195 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +196 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +197 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +198 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +199 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +200 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +201 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:12 +202 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:13 +203 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +204 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +205 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +206 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +207 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +208 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +209 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +210 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +211 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +212 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +213 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +214 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +215 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +216 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +217 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +218 -1: /tmp/r16-baseline/test/pages/history_partial_resume_test.dart: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:13 +219 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:13 +220 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:13 +221 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:13 +222 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:13 +223 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:13 +224 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:13 +225 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:13 +226 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +227 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +228 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +229 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +230 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +231 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +232 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +233 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +234 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +235 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +236 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +237 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +238 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +239 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +240 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:14 +241 -1: /tmp/r16-baseline/test/pages/history_page_test.dart: a refreshed tile shows its own record detail, not a stale one
+00:14 +242 -1: /tmp/r16-baseline/test/pages/history_page_test.dart: a refreshed tile shows its own record detail, not a stale one
+00:14 +243 -1: /tmp/r16-baseline/test/pages/history_page_test.dart: a refreshed tile shows its own record detail, not a stale one
+00:14 +244 -1: /tmp/r16-baseline/test/pages/history_page_test.dart: a refreshed tile shows its own record detail, not a stale one
+00:14 +245 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +246 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +247 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +248 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +249 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +250 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +251 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +252 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +253 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +254 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +255 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +256 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +257 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +258 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +259 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:14 +260 -1: /tmp/r16-baseline/test/pages/send_by_address_resolves_test.dart: a typed port is passed on, an omitted one is not
+00:15 +261 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 6. a URI open that is refused or throws surfaces an error instead of silently doing nothing
+00:15 +262 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 6. a URI open that is refused or throws surfaces an error instead of silently doing nothing
+00:15 +263 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 6. a URI open that is refused or throws surfaces an error instead of silently doing nothing
+00:15 +264 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 6. a URI open that is refused or throws surfaces an error instead of silently doing nothing
+00:15 +265 -1: /tmp/r16-baseline/test/pages/history_sent_file_open_test.dart: 6. a URI open that is refused or throws surfaces an error instead of silently doing nothing
+00:15 +266 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend explains why a partially-sent record cannot be resumed, instead of resuming into a bare io
+00:15 +267 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend explains why a partially-sent record cannot be resumed, instead of resuming into a bare io
+00:15 +268 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend explains why a partially-sent record cannot be resumed, instead of resuming into a bare io
+00:15 +269 -1: /tmp/r16-baseline/test/pages/history_resend_test.dart: HistoryPage Resend button Resend explains why a partially-sent record cannot be resumed, instead of resuming into a bare io
+00:15 +270 -1: /tmp/r16-baseline/test/ipc/android_channel_transport_test.dart: connect opens the socket; outbound bytes reach the write method
+00:15 +271 -1: /tmp/r16-baseline/test/ipc/android_channel_transport_test.dart: incoming event chunks are forwarded on the connection stream
+00:15 +272 -1: /tmp/r16-baseline/test/integration/app_smoke_test.dart: provider tree reaches running and round-trips against a real daemon
+00:15 +273 -1: /tmp/r16-baseline/test/integration/privetd_smoke_test.dart: real daemon: spawn, attach, identity, config, delete history
+00:15 +274 -1: Some tests failed.
+
+Failing tests:
+  /tmp/r16-baseline/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)
