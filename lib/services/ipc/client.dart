@@ -246,8 +246,23 @@ class PrivetIpcClient {
     });
     return (data as Map<String, dynamic>)['transfer_id'] as String;
   }
-  Future<String> resumeTransfer(String id) async =>
-      (await callRaw('resume_transfer', {'transfer_id': id}))['transfer_id'] as String;
+  /// Resumes an interrupted send **in place** — the same transfer id, so the
+  /// receiver keeps the chunks it already has.
+  ///
+  /// [paths] optionally replaces the source list the daemon recorded for that
+  /// send. It is needed because those recorded paths are often a staging copy
+  /// that `send_cache.dart` deletes when the transfer reaches a terminal state,
+  /// cancellation included: the history row keeps pointing at a file that is
+  /// gone, and resuming from it dies as a bare `io` error. Passing freshly
+  /// resolved originals lets the resume succeed under the same id.
+  ///
+  /// Omitted when null, so the wire request is unchanged for callers that do
+  /// not override the sources.
+  Future<String> resumeTransfer(String id, {List<String>? paths}) async =>
+      (await callRaw('resume_transfer', {
+        'transfer_id': id,
+        'paths': ?paths,
+      }))['transfer_id'] as String;
   Future<String> resendTransfer(String id) async =>
       (await callRaw('resend_transfer', {'transfer_id': id}))['transfer_id'] as String;
   Future<void> acceptTransfer(String id, {bool accept = true}) async =>

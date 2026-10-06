@@ -12,6 +12,7 @@ import '../services/android/original_ref_store.dart';
 import '../services/android/resend_staging.dart';
 import '../services/file_availability.dart';
 import '../services/ipc/dto.dart';
+import '../services/privet_service.dart';
 import '../state/daemon_state.dart';
 import '../widgets/file_tree_view.dart';
 import 'send_preparation_page.dart';
@@ -321,15 +322,36 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
     );
   }
 
-  /// Resumes a partial send in place, but only once its source is known to still
-  /// be there.
+  /// Resumes a partial send in place.
   ///
-  /// `resume_transfer` restarts the *same* transfer from the manifest the
-  /// daemon already recorded, so it re-reads the very staging copy the previous
-  /// attempt used. That copy is deleted once a transfer reaches a terminal
-  /// state, so a partial send whose copy has since been cleaned up cannot be
-  /// resumed — and attempting it anyway fails as `io`, with no hint that the
-  /// real problem is a missing source file.
+  /// A resume reuses the SAME transfer id, so the receiver keeps the chunks it
+  /// has already verified — that is the whole point of resuming rather than
+  /// resending.
+  ///
+  /// The daemon rebuilds its file list from the source paths it recorded. Two
+  /// things can make those paths unusable, and only one of them needs work:
+  ///
+  /// - **A send rooted at a DIRECTORY** (the app supports it: a folder pick
+  ///   caches a tree and the engine recurses it in `prepare_paths`) recorded
+  ///   NESTED relative paths — `sub/a.txt`, `b.txt`. Resolving each of those
+  ///   through [ResendStager] and sending the results as an override is
+  ///   actively wrong: an override is a list of individual paths, so
+  ///   `prepare_paths` derives `relative_path = file_name` for each and the
+  ///   set comes back flat — `a.txt`, `b.txt` — which
+  ///   `check_override_matches_intent` then refuses. When every recorded path
+  ///   is still there the fix is to build NO override at all: the engine re-reads
+  ///   the recorded paths and reproduces exactly the nesting, and nothing is
+  ///   re-staged.
+  /// - **A send whose sources are gone.** For an Android file pick every source
+  ///   is a staging copy that `send_cache.dart` deletes when the transfer
+  ///   reaches a terminal state (cancellation included), while the history row
+  ///   keeps pointing at it. Resuming from those paths fails as a bare `io`
+  ///   error that names neither the file nor the cause, so the sources are
+  ///   re-resolved from their *original reference* — the `content://` document
+  ///   the user picked, or a real path — and sent as the override.
+  ///
+  /// Both branches keep the same invariant: a resume covers the whole recorded
+  /// file set or nothing is sent at all.
   Future<void> _resumePartial(BuildContext context, WidgetRef ref) async {
     final record = widget.record;
     final service = ref.read(daemonStateProvider).service;
@@ -339,23 +361,100 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
     }
     final detail =
         await ref.read(transferHistoryProvider.notifier).detail(record.transferId);
-    // Entity existence, not `File(..).existsSync()`: a send can be rooted at a
-    // *directory* (the engine recurses it), and File().existsSync() is false
-    // for a directory — which would refuse a perfectly resumable transfer.
-    final missing = detail.files
-        .map((f) => f.absolutePath)
-        .whereType<String>()
-        .where((p) => FileSystemEntity.typeSync(p) == FileSystemEntityType.notFound)
+    final sources = detail.files
+        .map((f) => ResendSource(
+              absolutePath: f.absolutePath,
+              relativePath: f.relativePath,
+              size: f.size,
+            ))
         .toList();
-    if (missing.isNotEmpty) {
-      // Refuse up front rather than resuming into an `io` failure.
-      _showSnack('Cannot resume: the file this send was reading is gone '
-          '(${missing.first}). The send was interrupted and its temporary copy '
-          'was cleaned up — resend it as a new transfer instead.');
+
+    // Prefer the recorded paths when they are all still there: no override is
+    // built, so the engine reads the intent itself and the file set — including
+    // any nesting from a directory-rooted send — is reproduced exactly.
+    //
+    // `typeSync` and not `File(p).existsSync()`, because a send can be rooted at
+    // a directory and `File(p).existsSync()` is false for one. That mistake is
+    // what made this branch miss directory-rooted sends in the first place.
+    if (!context.mounted) return;
+    if (_allRecordedPathsPresent(sources)) {
+      await _issueResume(context, service, record.transferId, paths: null);
       return;
     }
+
+    // Some recorded path is gone. Fall back to resolving every file from its
+    // original reference with the same `ResendStager` the finished-transfer
+    // resend already uses.
+    final stager = ResendStager();
+    final candidates = await stager.plan(sources);
+    if (!context.mounted) return;
+
+    final blocked = candidates.where((c) => !c.isSendable).toList();
+    if (blocked.isNotEmpty) {
+      // Refuse up front: resuming a subset would leave the receiver's partial
+      // state describing files that never arrive.
+      final reasons = blocked
+          .map((c) => c.reason ?? '${c.label}: unavailable')
+          .join('\n');
+      _showSnack('Cannot resume — $reasons\n'
+          'Nothing was sent. This send was interrupted and its temporary copy '
+          'was cleaned up; pick the file again to resume it.');
+      return;
+    }
+
+    final paths = <String>[];
+    for (final c in candidates) {
+      final path = c.path!;
+      // Guarded by the stager; re-checked so a `content://` string can never
+      // reach the daemon.
+      assertSendablePath(path);
+      paths.add(path);
+    }
+
+    // The fresh copies belong to THIS transfer id, so the existing terminal-state
+    // cleanup frees them exactly like the ones the original send registered —
+    // adopted, not leaked.
+    await ref
+        .read(sendPreparationProvider.notifier)
+        .trackTempPathsFor(record.transferId, paths);
+    if (!context.mounted) return;
+
+    await _issueResume(context, service, record.transferId, paths: paths);
+  }
+
+  /// Whether every recorded source is still on disk.
+  ///
+  /// All-or-nothing on purpose: a partial answer is not usable, because a
+  /// resume that overrides only some of the files would describe a different
+  /// file set than the receiver already holds. When this is false the caller
+  /// falls back to re-resolving the whole set through [ResendStager].
+  ///
+  /// A recorded path that is null or empty counts as gone: there is nothing to
+  /// hand the engine.
+  bool _allRecordedPathsPresent(List<ResendSource> sources) =>
+      sources.isNotEmpty &&
+      sources.every((s) {
+        final p = s.absolutePath;
+        if (p == null || p.isEmpty) return false;
+        try {
+          return FileSystemEntity.typeSync(p) != FileSystemEntityType.notFound;
+        } catch (_) {
+          // A path that cannot even be stat'd (permissions, a broken mount) is
+          // not a path we can promise the daemon will read. Let the stager try.
+          return false;
+        }
+      });
+
+  /// Issues the resume itself, with [paths] as the source override or null for
+  /// "use the recorded paths", and reports a failure rather than throwing.
+  Future<void> _issueResume(
+    BuildContext context,
+    PrivetService service,
+    String transferId, {
+    required List<String>? paths,
+  }) async {
     try {
-      await service.resumeTransfer(record.transferId);
+      await service.resumeTransfer(transferId, paths: paths);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

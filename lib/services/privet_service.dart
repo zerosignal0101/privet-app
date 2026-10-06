@@ -53,7 +53,12 @@ class PrivetService {
   Future<String> send(List<String> paths, String fingerprint,
           {String? asName, String? via}) =>
       _client.send(paths, fingerprint, asName: asName, via: via);
-  Future<String> resumeTransfer(String transferId) => _client.resumeTransfer(transferId);
+  /// [paths] optionally replaces the source list the daemon recorded for this
+  /// send. Needed because the recorded paths are usually a staging copy that has
+  /// already been cleaned up; passing freshly resolved originals lets the same
+  /// transfer be resumed.
+  Future<String> resumeTransfer(String transferId, {List<String>? paths}) =>
+      _client.resumeTransfer(transferId, paths: paths);
   Future<String> resendTransfer(String transferId) => _client.resendTransfer(transferId);
   Future<void> acceptTransfer(String transferId, {bool accept = true}) =>
       _client.acceptTransfer(transferId, accept: accept);

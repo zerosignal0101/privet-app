@@ -1,0 +1,20 @@
+637 |         override_paths: Option<Vec<std::path::PathBuf>>,
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.15s
+     Running tests/resume_override.rs (target/debug/deps/resume_override-da601d190cc0a3d6)
+running 3 tests
+test resume_with_override_completes_same_transfer_from_fresh_source ... FAILED
+test structurally_mismatching_override_is_refused_and_changes_nothing ... FAILED
+test resume_without_override_after_source_gone_fails_with_bare_io ... ok
+failures:
+---- resume_with_override_completes_same_transfer_from_fresh_source stdout ----
+thread 'resume_with_override_completes_same_transfer_from_fresh_source' (3626018) panicked at privet-core/tests/resume_override.rs:354:6:
+a matching override must let the resume succeed: Io(Os { code: 2, kind: NotFound, message: "No such file or directory" })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+---- structurally_mismatching_override_is_refused_and_changes_nothing stdout ----
+thread 'structurally_mismatching_override_is_refused_and_changes_nothing' (3626020) panicked at privet-core/tests/resume_override.rs:458:5:
+the refusal must name the disagreeing file, got: io: No such file or directory (os error 2)
+failures:
+    resume_with_override_completes_same_transfer_from_fresh_source
+    structurally_mismatching_override_is_refused_and_changes_nothing
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.68s
+error: test failed, to rerun pass `-p privet-core --test resume_override`

@@ -1,0 +1,6 @@
+test resume_with_override_completes_same_transfer_from_fresh_source ... [2m2026-10-06T14:24:21.025567Z[0m [33m WARN[0m [2mprivet_core::adapters::transfer_sink[0m[2m:[0m engine event publish: no subscribers (dropped)
+RESUME-SIGNAL transfer_id=t-resume-override total_bytes=67108864 baseline_bytes=32505856 newly_sent_bytes=34603008 progress_events=4 progress=[32505856, 50331648, 57671680, 67108864]
+test resume_without_override_after_source_gone_fails_with_bare_io ... [2m2026-10-06T14:24:25.968430Z[0m [33m WARN[0m [2mprivet_core::adapters::transfer_sink[0m[2m:[0m engine event publish: no subscribers (dropped)
+REPRO transfer_id=t-repro-io resume_without_override -> error_code=io message="io: No such file or directory (os error 2)"
+test structurally_mismatching_override_is_refused_and_changes_nothing ... [2m2026-10-06T14:24:28.207485Z[0m [33m WARN[0m [2mprivet_core::adapters::transfer_sink[0m[2m:[0m engine event publish: no subscribers (dropped)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.50s
