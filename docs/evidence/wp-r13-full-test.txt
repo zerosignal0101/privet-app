@@ -1,0 +1,282 @@
+00:00 +0: loading /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_test.dart
+00:00 +0: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_test.dart: parseDialString bare IPv4 uses the default port
+00:00 +1: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_test.dart: parseDialString IPv4 with an explicit port keeps it
+00:00 +2: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_test.dart: parseDialString honours a non-default defaultPort
+00:00 +3: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_test.dart: parseDialString surrounding whitespace is trimmed
+00:00 +4: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_test.dart: parseDialString bracketed IPv6 with a port is unwrapped
+00:00 +5: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_test.dart: parseDialString bracketed IPv6 without a port uses the default
+00:00 +6: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_test.dart: parseDialString bare IPv6 is not truncated at its colons
+00:00 +7: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_test.dart: parseDialString rejects empty, unterminated bracket and non-numeric ports
+00:00 +8: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_test.dart: formatDialString brackets IPv6 only
+00:00 +9: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_test.dart: hasExplicitPort is false when the port is left out
+00:00 +10: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_test.dart: hasExplicitPort is true when a port is written out
+00:00 +11: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_test.dart: hasExplicitPort is false for input that is not an address at all
+00:00 +12: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — accepted input a bare IPv4 address passes through unchanged
+00:00 +13: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — accepted input a bare IPv4 is accepted but a bare IPv4 with a bad port is not
+00:00 +14: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — accepted input a typed port is stripped — the engine takes it from the record
+00:00 +15: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — accepted input a non-default port is also stripped, not forwarded
+00:00 +16: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — accepted input surrounding whitespace is trimmed
+00:00 +17: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — accepted input a bare IPv6 literal is accepted
+00:00 +18: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — accepted input a bracketed IPv6 with port is unwrapped and de-ported
+00:00 +19: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — accepted input a bracketed IPv6 without port is unwrapped
+00:00 +20: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — accepted input an IPv4-mapped IPv6 form is accepted
+00:00 +21: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — accepted input an empty box means "no override", not an error
+00:00 +22: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — rejected input a hostname is rejected — the engine dials an IP
+00:00 +23: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — rejected input a non-numeric port is rejected
+00:00 +24: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — rejected input an out-of-range IPv4 octet is rejected
+00:00 +25: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — rejected input too few IPv4 octets is rejected
+00:00 +26: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — rejected input a malformed IPv6 literal is rejected
+00:00 +27: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — rejected input an unterminated bracket is rejected
+00:00 +28: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: parseViaAddress — rejected input plain text is rejected
+00:00 +29: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: isValidIpLiteral accepts well-formed IPv4
+00:00 +30: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: isValidIpLiteral rejects bad IPv4
+00:00 +31: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: isValidIpLiteral accepts well-formed IPv6, including compressed forms
+00:00 +32: /home/zsig/Documents/gits/privet-app-wpr13/test/utils/addr_via_test.dart: isValidIpLiteral rejects bad IPv6
+00:00 +33: /home/zsig/Documents/gits/privet-app-wpr13/test/integration/app_smoke_test.dart: provider tree reaches running and round-trips against a real daemon
+00:00 +34: /home/zsig/Documents/gits/privet-app-wpr13/test/integration/privetd_smoke_test.dart: real daemon: spawn, attach, identity, config, delete history
+00:00 +35: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +36: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +37: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +38: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +39: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +40: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +41: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +42: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +43: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +44: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +45: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +46: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +47: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +48: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +49: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +50: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:00 +51: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:01 +52: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:01 +53: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:01 +53: /home/zsig/Documents/gits/privet-app-wpr13/test/services/android/content_uri_file_picker_test.dart: 3. a cancelled pick records nothing and does not throw
+[SAF] pickFiles error: PlatformException(SAF_ERROR, no activity, null, null)
+00:01 +54: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:01 +55: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:01 +55: /home/zsig/Documents/gits/privet-app-wpr13/test/services/android/content_uri_file_picker_test.dart: 4b. an entry with an unusable reference still sends, and the others keep theirs
+[SAF] unusable original reference, sending anyway: relative/not-a-reference
+00:01 +56: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:01 +57: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:01 +58: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:01 +59: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:01 +60: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:01 +61: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:01 +62: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:01 +63: /home/zsig/Documents/gits/privet-app-wpr13/test/widget_test.dart: app boots to the shell with a running daemon
+00:01 +64: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner (null Process) polls until connect succeeds
+00:01 +65: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner (null Process) polls until connect succeeds
+00:01 +66: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner (null Process) polls until connect succeeds
+00:01 +67: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner (null Process) polls until connect succeeds
+00:01 +68: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner (null Process) polls until connect succeeds
+00:01 +69: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner (null Process) polls until connect succeeds
+00:01 +70: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner (null Process) polls until connect succeeds
+00:01 +71: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner (null Process) polls until connect succeeds
+00:01 +72: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner (null Process) polls until connect succeeds
+00:01 +73: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner with no daemon gives up
+00:01 +74: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner with no daemon gives up
+00:01 +75: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner with no daemon gives up
+00:01 +76: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner with no daemon gives up
+00:01 +77: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner with no daemon gives up
+00:01 +78: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner with no daemon gives up
+00:01 +79: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner with no daemon gives up
+00:01 +80: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner with no daemon gives up
+00:01 +81: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner with no daemon gives up
+00:01 +82: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner with no daemon gives up
+00:01 +83: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner with no daemon gives up
+00:01 +84: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: in-process spawner with no daemon gives up
+00:01 +85: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:01 +86: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:01 +87: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:01 +88: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:01 +88 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:01 +88 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX) [E]
+  Unsupported operation: Cannot modify unmodifiable map
+  dart:collection                                   _UnmodifiableMapMixin.[]=
+  test/services/daemon_supervisor_test.dart 180:25  main.<fn>
+  
+00:02 +89 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_resolves_test.dart: an address of an already-paired device sends, without a code
+00:02 +90 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_preparation_pairing_test.dart: entering the remote code and pairing does not crash the page
+00:02 +91 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_preparation_offline_test.dart: send to an offline recipient shows a clear error and is blocked
+00:02 +92 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_preparation_offline_test.dart: send to an offline recipient shows a clear error and is blocked
+00:02 +93 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_preparation_offline_test.dart: send to an offline recipient shows a clear error and is blocked
+00:02 +94 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_preparation_offline_test.dart: send to an offline recipient shows a clear error and is blocked
+00:03 +95 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_address_test.dart: pre-fills the newest remembered address and shows the older ones
+00:03 +96 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_address_test.dart: pre-fills the newest remembered address and shows the older ones
+00:03 +97 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_known_online_test.dart: offline known device has no send button; online one does
+00:03 +98 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_known_online_test.dart: offline known device has no send button; online one does
+00:03 +99 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_known_online_test.dart: offline known device has no send button; online one does
+00:03 +100 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_known_online_test.dart: offline known device has no send button; online one does
+00:03 +101 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +102 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +103 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +104 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +105 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +106 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +107 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +108 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +109 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +110 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +111 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +112 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +113 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +114 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +115 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +116 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +117 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +118 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +119 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +120 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +121 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/home_page_reachability_test.dart: a trusted device whose remembered address answers as itself is Reachable, offers Send, and sends via that address
+00:03 +122 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/rename_device_test.dart: renaming device name survives the daemon restart
+00:03 +123 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/rename_device_test.dart: renaming device name survives the daemon restart
+00:03 +124 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/rename_device_test.dart: renaming device name survives the daemon restart
+00:03 +125 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/rename_device_test.dart: renaming device name survives the daemon restart
+00:04 +126 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/rename_device_test.dart: renaming device name survives the daemon restart
+00:04 +127 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/rename_device_test.dart: renaming device name survives the daemon restart
+00:04 +128 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/rename_device_test.dart: renaming device name survives the daemon restart
+00:04 +129 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/rename_device_test.dart: renaming device name survives the daemon restart
+00:04 +130 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/rename_device_test.dart: renaming device name survives the daemon restart
+00:04 +131 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/rename_device_test.dart: renaming device name survives the daemon restart
+00:04 +132 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/rename_device_test.dart: renaming device name survives the daemon restart
+00:04 +133 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/rename_device_test.dart: renaming device name survives the daemon restart
+00:04 +134 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:04 +135 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:04 +136 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/history_resend_test.dart: HistoryPage Resend button Resend of a record whose original still exists sends the ORIGINAL path, not the deleted staging path (the WP-R11 bug)
+00:04 +137 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/history_page_test.dart: a refreshed tile shows its own record detail, not a stale one
+00:04 +138 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/history_page_test.dart: a refreshed tile shows its own record detail, not a stale one
+00:04 +139 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_who_answered_test.dart: who answered the address a device already in the trust store is named by the send itself, with no code and no extra step
+00:04 +140 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_who_answered_test.dart: who answered the address a device already in the trust store is named by the send itself, with no code and no extra step
+00:04 +141 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_who_answered_test.dart: who answered the address a device already in the trust store is named by the send itself, with no code and no extra step
+00:04 +142 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_who_answered_test.dart: who answered the address a device already in the trust store is named by the send itself, with no code and no extra step
+00:04 +143 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_who_answered_test.dart: who answered the address a device already in the trust store is named by the send itself, with no code and no extra step
+00:05 +144 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_who_answered_test.dart: who answered the address a device already in the trust store is named by the send itself, with no code and no extra step
+00:05 +145 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_who_answered_test.dart: who answered the address a device already in the trust store is named by the send itself, with no code and no extra step
+00:05 +146 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_who_answered_test.dart: who answered the address a device already in the trust store is named by the send itself, with no code and no extra step
+00:05 +147 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_who_answered_test.dart: who answered the address a device already in the trust store is named by the send itself, with no code and no extra step
+00:05 +148 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_by_address_who_answered_test.dart: who answered the address a device already in the trust store is named by the send itself, with no code and no extra step
+00:05 +149 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/transfer_tile_failed_message_test.dart: rejected shows "peer no longer trusts you" guidance
+00:05 +150 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/transfer_tile_failed_message_test.dart: rejected shows "peer no longer trusts you" guidance
+00:05 +151 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/transfer_tile_failed_message_test.dart: rejected shows "peer no longer trusts you" guidance
+00:05 +152 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/transfer_tile_failed_message_test.dart: rejected shows "peer no longer trusts you" guidance
+00:05 +153 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +154 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +155 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +156 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +157 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +158 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +159 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +160 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +161 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +162 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +163 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +164 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +165 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +166 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +167 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +168 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +169 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +170 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +171 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +172 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +173 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +174 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +175 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +176 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +177 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +178 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +179 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +180 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/desktop_frame_test.dart: desktop caps the app at 480px and paints the app background
+00:05 +181 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:05 +182 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:05 +183 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:05 +184 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:05 +185 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:05 +186 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:05 +187 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:05 +188 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app stops the daemon when Leave Daemon Running is off
+00:05 +189 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/providers/history_test.dart: terminal events trigger a history refresh
+00:05 +190 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/providers/transfers_test.dart: incoming offer lifecycle: offered -> progress -> completed
+00:05 +191 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app keeps the daemon when Leave Daemon Running is on
+00:05 +192 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app keeps the daemon when Leave Daemon Running is on
+00:05 +193 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app keeps the daemon when Leave Daemon Running is on
+00:05 +194 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app keeps the daemon when Leave Daemon Running is on
+00:05 +195 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app keeps the daemon when Leave Daemon Running is on
+00:05 +196 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app keeps the daemon when Leave Daemon Running is on
+00:05 +197 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: closing the app keeps the daemon when Leave Daemon Running is on
+00:06 +198 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/providers/transfers_test.dart: auto-accept is picked up from the daemon runtime config on boot
+00:06 +199 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/providers/send_preparation_test.dart: send preparation requires files and a peer
+00:06 +200 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: Windows WM_CLOSE (privet/window channel) stops the daemon when Leave Daemon Running is off
+00:06 +201 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: Windows WM_CLOSE (privet/window channel) stops the daemon when Leave Daemon Running is off
+00:06 +202 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: Windows WM_CLOSE (privet/window channel) stops the daemon when Leave Daemon Running is off
+00:06 +203 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: Windows WM_CLOSE (privet/window channel) stops the daemon when Leave Daemon Running is off
+00:06 +204 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: Windows WM_CLOSE (privet/window channel) stops the daemon when Leave Daemon Running is off
+00:06 +205 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/providers/transfers_test.dart: a transferring tile that went silent is self-healed even when the daemon is unreachable
+00:06 +206 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/providers/transfers_test.dart: a transferring tile that went silent is self-healed even when the daemon is unreachable
+00:06 +207 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/providers/transfers_test.dart: a transferring tile that went silent is self-healed even when the daemon is unreachable
+00:06 +208 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/providers/transfers_test.dart: a transferring tile that went silent is self-healed even when the daemon is unreachable
+00:06 +209 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/providers/transfers_test.dart: a transferring tile that went silent is self-healed even when the daemon is unreachable
+00:06 +210 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/providers/transfers_test.dart: a transferring tile that went silent is self-healed even when the daemon is unreachable
+00:06 +211 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/providers/transfers_test.dart: a transferring tile that went silent is self-healed even when the daemon is unreachable
+00:06 +212 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/providers/transfers_test.dart: a transferring tile that went silent is self-healed even when the daemon is unreachable
+00:06 +213 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: Windows WM_CLOSE (privet/window channel) keeps the daemon when Leave Daemon Running is on
+00:06 +214 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: Windows WM_CLOSE (privet/window channel) keeps the daemon when Leave Daemon Running is on
+00:06 +215 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: settings shows Leave Daemon Running on desktop
+00:06 +216 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: settings shows Leave Daemon Running on desktop
+00:06 +217 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/widgets/leave_daemon_running_test.dart: settings hides Leave Daemon Running on Android
+00:06 +218 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_local_addrs_test.dart: DaemonStatus.localAddrs missing field is treated as an empty list (old daemon)
+00:06 +219 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_local_addrs_test.dart: DaemonStatus.localAddrs explicit empty list is an empty list
+00:06 +220 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_local_addrs_test.dart: DaemonStatus.localAddrs parses every address in engine order with its ports
+00:06 +221 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_local_addrs_test.dart: DaemonStatus.localAddrs round-trips through toJson including local_addrs
+00:06 +222 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_local_addrs_test.dart: DaemonStatus.localAddrs a malformed entry is still a loud protocol error
+00:06 +223 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_local_addrs_test.dart: LocalAddrDto.dialString IPv4 renders ip:port
+00:06 +224 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_local_addrs_test.dart: LocalAddrDto.dialString IPv6 is bracketed so the port stays unambiguous
+00:06 +225 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_local_addrs_test.dart: LocalAddrDto.dialString what is copied parses back to the same ip and port
+00:06 +226 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/android_channel_transport_test.dart: connect opens the socket; outbound bytes reach the write method
+00:06 +227 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/android_channel_transport_test.dart: incoming event chunks are forwarded on the connection stream
+00:06 +228 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_resolve_address_test.dart: ResolvedAddressDto from a real capture parses a trusted answer exactly as the daemon sent it
+00:06 +229 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_resolve_address_test.dart: ResolvedAddressDto from a real capture parses an untrusted answer exactly as the daemon sent it
+00:06 +230 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_resolve_address_test.dart: ResolvedAddressDto from a real capture the two captures differ in trust, not in shape
+00:06 +231 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_resolve_address_test.dart: ResolvedAddressDto from a real capture a "found: false" answer carries no identity, as the captures imply
+00:06 +232 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_resolve_address_test.dart: ResolvedAddressDto from a real capture an unknown field is rejected rather than ignored
+00:06 +233 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/unix_socket_transport_test.dart: connects and echoes bytes over a unix socket
+00:07 +234 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/protocol_test.dart: IpcFrameCodec round-trips a message
+00:07 +235 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/protocol_test.dart: IpcFrameCodec returns null until a full frame is buffered
+00:07 +236 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/protocol_test.dart: IpcFrameCodec rejects messages larger than the 1 MiB limit
+00:07 +237 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/protocol_test.dart: IpcFrameCodec rejects frames whose header declares an oversized length
+00:07 +238 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/protocol_test.dart: framesFrom yields each message in order
+00:07 +239 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/protocol_test.dart: framesFrom yields a message split across chunks
+00:07 +240 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/protocol_test.dart: framesFrom propagates oversized frame errors
+00:07 +241 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/protocol_test.dart: envelope encodes request with id, method and params
+00:07 +242 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/protocol_test.dart: envelope decodeEnvelope rejects wrong protocol version
+00:07 +243 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_test.dart: DaemonStatus.fromJson
+00:07 +244 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_test.dart: PeerDto.fromJson with candidates
+00:07 +245 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_test.dart: HistoryDetailDto.fromJson
+00:07 +246 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_test.dart: ResolvedAddressDto.fromJson reads a device that answered
+00:07 +247 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_test.dart: ResolvedAddressDto.fromJson reads nothing answering
+00:07 +248 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_test.dart: ResolvedAddressDto rejects an unknown field
+00:07 +249 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_test.dart: unknown fields are rejected
+00:07 +250 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/events_test.dart: parses a progress event message
+00:07 +251 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/events_test.dart: parses runtime_config_changed with nested config
+00:07 +252 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/events_test.dart: parses daemon_stopping with empty data
+00:07 +253 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/events_test.dart: rejects unknown event names
+00:07 +254 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/events_test.dart: request envelopes carry method and params
+00:07 +255 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses missing field is treated as an empty list (old daemon)
+00:07 +256 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses explicit empty list is an empty list
+00:07 +257 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses parses every address in engine order with its ports
+00:07 +258 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses latestAddress is the newest remembered one
+00:07 +259 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses an IPv6 address renders bracketed
+00:07 +260 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses round-trips through toJson including addresses
+00:07 +261 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses a malformed entry is still a loud protocol error
+00:07 +262 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/transport_test.dart: MemoryTransport connects and echoes scripted replies
+00:07 +263 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/transport_test.dart: MemoryTransport inject pushes a raw server frame
+00:07 +264 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/client_test.dart: connect performs status and replay; dedupes events
+00:07 +265 -1: /home/zsig/Documents/gits/privet-app-wpr13/test/ipc/client_test.dart: call surfaces daemon errors as PrivetIpcException
+00:07 +266 -1: Some tests failed.
+
+Failing tests:
+  /home/zsig/Documents/gits/privet-app-wpr13/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)
+TEST_EXIT=1

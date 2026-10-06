@@ -1,0 +1,10 @@
+00:00 +0: loading /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_peer_switch_test.dart
+00:00 +0: switching receiver clears the box and sends no via from A
+00:00 +1: switching receiver adopts B's own remembered address, not A's
+00:01 +2: the suggestion chips list the current peer's addresses only
+00:01 +3: an address typed for A never reaches B, and does not come back
+00:01 +4: re-selecting the same receiver keeps a half-typed address
+00:01 +5: the send-by-address entry keeps the address the user typed
+00:01 +6: clearing the receiver clears the address too
+00:01 +7: a receiver change clears a pending address error as well
+00:01 +8: All tests passed!
