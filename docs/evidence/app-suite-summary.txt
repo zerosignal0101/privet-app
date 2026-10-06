@@ -1,0 +1,11 @@
+00:02 +73: /home/zsig/Documents/gits/privet-app-wpr12/test/services/daemon_supervisor_test.dart: in-process spawner with no daemon gives up
+00:02 +74: /home/zsig/Documents/gits/privet-app-wpr12/test/services/daemon_supervisor_test.dart: stop calls the stopHandler when there is no process
+00:02 +75: /home/zsig/Documents/gits/privet-app-wpr12/test/services/daemon_supervisor_test.dart: shutdownAttachedDaemon asks the daemon to stop over IPC
+00:02 +76: /home/zsig/Documents/gits/privet-app-wpr12/test/services/daemon_supervisor_test.dart: shutdownAttachedDaemon tolerates an unreachable daemon
+00:02 +77: /home/zsig/Documents/gits/privet-app-wpr12/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)
+00:02 +77 -1: /home/zsig/Documents/gits/privet-app-wpr12/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX) [E]
+  test/services/daemon_supervisor_test.dart 180:25  main.<fn>
+00:11 +264 -1: Some tests failed.
+Failing tests:
+  /home/zsig/Documents/gits/privet-app-wpr12/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)
+  /home/zsig/Documents/gits/privet-app-wpr12/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)

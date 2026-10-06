@@ -1,0 +1,16 @@
+$ cargo fmt --check -p privet-core   # at baseline HEAD (no changes of mine)
+Diff in privet-core/src/adapters/pairing_sink.rs
+Diff in privet-core/src/adapters/transfer_sink.rs
+Diff in privet-core/src/adapters/trust_store.rs
+Diff in privet-core/src/discovery.rs
+Diff in privet-core/src/events.rs
+Diff in privet-core/src/lib.rs
+Diff in privet-core/src/ops.rs
+Diff in privet-core/src/pairing.rs
+Diff in privet-core/src/transfer.rs
+Diff in privet-core/tests/ops_read.rs
+Diff in privet-core/tests/ops_send_serve.rs
+Diff in privet-core/tests/reconnect_e2e.rs
+Diff in privet-core/tests/resume_intent.rs
+--- total diff hunks:
+50

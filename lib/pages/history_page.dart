@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
@@ -321,15 +319,24 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
     );
   }
 
-  /// Resumes a partial send in place, but only once its source is known to still
-  /// be there.
+  /// Resumes a partial send in place, supplying fresh sources for it.
   ///
-  /// `resume_transfer` restarts the *same* transfer from the manifest the
-  /// daemon already recorded, so it re-reads the very staging copy the previous
-  /// attempt used. That copy is deleted once a transfer reaches a terminal
-  /// state, so a partial send whose copy has since been cleaned up cannot be
-  /// resumed — and attempting it anyway fails as `io`, with no hint that the
-  /// real problem is a missing source file.
+  /// A resume reuses the SAME transfer id, so the receiver keeps the chunks it
+  /// has already verified — that is the whole point of resuming rather than
+  /// resending. But the daemon rebuilds its file list from the source paths it
+  /// recorded, and for an Android send those paths are the staging copy that
+  /// `send_cache.dart` deletes when the transfer reaches a terminal state
+  /// (cancellation included). Resuming from them fails as a bare `io` error that
+  /// names neither the file nor the cause.
+  ///
+  /// So the same `ResendStager` the finished-transfer resend already uses
+  /// resolves every file from its *original reference* — the `content://`
+  /// document the user picked, or a real path — and those fresh paths go out as
+  /// the resume's source override.
+  ///
+  /// All or nothing: a resume covers the whole recorded file set, and the engine
+  /// refuses one that does not, so if any file cannot be resolved this makes NO
+  /// request at all and explains each one, rather than resuming a subset.
   Future<void> _resumePartial(BuildContext context, WidgetRef ref) async {
     final record = widget.record;
     final service = ref.read(daemonStateProvider).service;
@@ -339,23 +346,53 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
     }
     final detail =
         await ref.read(transferHistoryProvider.notifier).detail(record.transferId);
-    // Entity existence, not `File(..).existsSync()`: a send can be rooted at a
-    // *directory* (the engine recurses it), and File().existsSync() is false
-    // for a directory — which would refuse a perfectly resumable transfer.
-    final missing = detail.files
-        .map((f) => f.absolutePath)
-        .whereType<String>()
-        .where((p) => FileSystemEntity.typeSync(p) == FileSystemEntityType.notFound)
+    final sources = detail.files
+        .map((f) => ResendSource(
+              absolutePath: f.absolutePath,
+              relativePath: f.relativePath,
+              size: f.size,
+            ))
         .toList();
-    if (missing.isNotEmpty) {
-      // Refuse up front rather than resuming into an `io` failure.
-      _showSnack('Cannot resume: the file this send was reading is gone '
-          '(${missing.first}). The send was interrupted and its temporary copy '
-          'was cleaned up — resend it as a new transfer instead.');
+
+    // The recorded absolute paths are normally the vanished staging copies, so
+    // resolve from the original reference instead of checking whether the dead
+    // path still exists.
+    final stager = ResendStager();
+    final candidates = await stager.plan(sources);
+    if (!context.mounted) return;
+
+    final blocked = candidates.where((c) => !c.isSendable).toList();
+    if (blocked.isNotEmpty) {
+      // Refuse up front: resuming a subset would leave the receiver's partial
+      // state describing files that never arrive.
+      final reasons = blocked
+          .map((c) => c.reason ?? '${c.label}: unavailable')
+          .join('\n');
+      _showSnack('Cannot resume — $reasons\n'
+          'Nothing was sent. This send was interrupted and its temporary copy '
+          'was cleaned up; pick the file again to resume it.');
       return;
     }
+
+    final paths = <String>[];
+    for (final c in candidates) {
+      final path = c.path!;
+      // Guarded by the stager; re-checked so a `content://` string can never
+      // reach the daemon.
+      assertSendablePath(path);
+      paths.add(path);
+    }
+
+    // The fresh copies belong to THIS transfer id, so the existing terminal-state
+    // cleanup frees them exactly like the ones the original send registered —
+    // adopted, not leaked.
+    await ref
+        .read(sendPreparationProvider.notifier)
+        .trackTempPathsFor(record.transferId, paths);
+    if (!context.mounted) return;
+
     try {
-      await service.resumeTransfer(record.transferId);
+      await service.resumeTransfer(record.transferId, paths: paths);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

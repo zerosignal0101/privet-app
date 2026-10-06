@@ -119,6 +119,41 @@ class SendPreparationNotifier extends Notifier<SendPreparationState> {
     await SendCache.deleteIfCachedMany(paths);
   }
 
+  /// Registers Android cache staging copies that belong to [transferId] so they
+  /// are deleted when that transfer reaches a terminal state.
+  ///
+  /// This is how a *resumed* send adopts its fresh copies: the resume re-stages
+  /// files under the SAME transfer id (the receiver must keep its partial state,
+  /// so the id cannot change), and the copies it just made have to be freed with
+  /// that transfer. Without this the resumed copies would be orphaned and leak —
+  /// the cache once grew past 2.6 GB.
+  ///
+  /// Entries accumulate for the id, so a copy registered by the original send and
+  /// re-registered by its resume are both released together. Paths outside the
+  /// cache are ignored: they are files the app does not own and must survive.
+  ///
+  /// Returns the cache paths this call took ownership of, which is what the
+  /// caller registered. [isCachePath] exists so this decision is testable off
+  /// device — `SendCache.isCachePath` is only ever true on Android.
+  Future<List<String>> trackTempPathsFor(
+    String transferId,
+    List<String> paths, {
+    Future<bool> Function(String path)? isCachePath,
+  }) async {
+    if (paths.isEmpty) return const [];
+    final probe = isCachePath ?? SendCache.isCachePath;
+    final temp = <String>[];
+    for (final p in paths) {
+      if (await probe(p)) temp.add(p);
+    }
+    if (temp.isEmpty) return const [];
+    final existing = _pendingCleanup.putIfAbsent(transferId, () => <String>[]);
+    for (final p in temp) {
+      if (!existing.contains(p)) existing.add(p);
+    }
+    return temp;
+  }
+
   /// Discards the whole selection AND deletes the Android staging copies that
   /// were never handed to the daemon (the user removed them before sending).
   Future<void> discardSelection() async {
