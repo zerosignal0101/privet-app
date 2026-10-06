@@ -7,6 +7,8 @@ import 'package:open_filex/open_filex.dart';
 import '../models/file_tree.dart';
 import '../providers/history.dart';
 import '../providers/send_preparation.dart';
+import '../services/android/original_ref_store.dart';
+import '../services/file_availability.dart';
 import '../services/ipc/dto.dart';
 import '../state/daemon_state.dart';
 import '../widgets/file_tree_view.dart';
@@ -340,11 +342,93 @@ class _DetailSection extends StatelessWidget {
         final nodes = buildFileTreeFromHistoryFiles(detail.files);
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: FileTreeView(
-            nodes: nodes,
-            onOpenFile: onOpen,
-            formatSize: _formatSize,
-          ),
+          child: _HistoryFileTree(nodes: nodes, onOpen: onOpen),
+        );
+      },
+    );
+  }
+}
+
+/// Renders a finished transfer's file tree, first resolving each file's
+/// availability from its *original* reference.
+///
+/// The staged copy the daemon recorded is a one-shot artifact that the send
+/// cache deletes by design, so judging reachability by that path alone made
+/// every sent file read "File not accessible" once it was cleaned up. This
+/// widget asks about the file the user actually chose, then hands the verdict
+/// to [FileTreeView] so the rendering stays synchronous.
+class _HistoryFileTree extends StatefulWidget {
+  final List<FileTreeNode> nodes;
+  final Future<void> Function(String path) onOpen;
+
+  const _HistoryFileTree({required this.nodes, required this.onOpen});
+
+  @override
+  State<_HistoryFileTree> createState() => _HistoryFileTreeState();
+}
+
+class _HistoryFileTreeState extends State<_HistoryFileTree> {
+  late Future<Map<String, FileAvailability>> _availability;
+
+  @override
+  void initState() {
+    super.initState();
+    _availability = _resolve();
+  }
+
+  @override
+  void didUpdateWidget(covariant _HistoryFileTree oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The detail FutureBuilder can hand us a different record's tree; never
+    // show the previous record's verdicts against new nodes.
+    if (!identical(oldWidget.nodes, widget.nodes)) {
+      _availability = _resolve();
+    }
+  }
+
+  /// Resolves every leaf path in the tree. Failures resolve to "not accessible"
+  /// rather than propagating, so one bad row can't blank the whole list.
+  Future<Map<String, FileAvailability>> _resolve() async {
+    final paths = <String>{};
+    void walk(FileTreeNode node) {
+      if (node.isDir) {
+        node.children.forEach(walk);
+      } else if (node.fullPath != null) {
+        paths.add(node.fullPath!);
+      }
+    }
+
+    widget.nodes.forEach(walk);
+
+    final entries = await Future.wait(paths.map((path) async {
+      try {
+        final ref = await OriginalRefStore.lookup(path);
+        final availability = await FileAvailabilityResolver.resolve(
+          originalRef: ref?.value,
+          stagedPath: path,
+        );
+        return MapEntry(path, availability);
+      } catch (_) {
+        return MapEntry(path, FileAvailability.inaccessible);
+      }
+    }));
+    return Map<String, FileAvailability>.fromEntries(entries);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, FileAvailability>>(
+      future: _availability,
+      builder: (context, snapshot) {
+        // Until verdicts land, fall back to the pre-existing exists-on-disk
+        // rendering rather than flashing "not accessible" at a file that may
+        // well be reachable.
+        final availability = snapshot.data;
+        return FileTreeView(
+          nodes: widget.nodes,
+          onOpenFile: widget.onOpen,
+          formatSize: _formatSize,
+          availabilityByPath: availability,
         );
       },
     );

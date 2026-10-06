@@ -1,0 +1,110 @@
+WP-R6 — flutter analyze / flutter test / flutter build apk
+Branch: wp/app-history-original-path
+
+Environment used (as specified for this package):
+export PATH="/home/zsig/flutter-sdk/bin:$PATH"
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+export JAVA_TOOL_OPTIONS="-Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=4568 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=4568 -Dhttp.nonProxyHosts=localhost|127.0.0.1|10.*|172.16.*|192.168.*"
+
+Flutter toolchain:
+$ flutter --version
+Flutter 3.47.6 • channel stable • https://github.com/flutter/flutter.git
+Framework • revision 5fc346839c (6 days ago) • 2026-09-30 17:35:47 -0700
+Engine • revision b8c8d8cc53d0095127057f8a26cc53da2167c (revision 692136cb65) • 2026-09-30 10:01:00.000
+Tools • Dart 3.13.5 • DevTools 2.60.0
+
+================================================================================
+1. flutter analyze
+================================================================================
+$ flutter analyze
+Analyzing privet-app-wpr6...
+No issues found! (ran in 2.2s)
+(exit 0)
+
+================================================================================
+2. flutter test  (full suite)
+================================================================================
+$ flutter test
+...
+00:12 +221 -1: .../test/ipc/client_test.dart: call surfaces daemon errors as PrivetIpcException
+00:12 +222 -1: Some tests failed.
+
+Failing tests:
+  /home/zsig/Documents/gits/privet-app-wpr6/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)
+
+222 passed, 1 failed.
+
+The single failure is the KNOWN PRE-EXISTING failure called out in this task
+("already failing before you touch anything — do not fix"). Confirmed
+pre-existing rather than introduced, by stashing all of this work and running
+that file on the pristine tree:
+
+$ git stash -u -q
+$ flutter test test/services/daemon_supervisor_test.dart
+  test/services/daemon_supervisor_test.dart 180:25  main.<fn>
+00:01 +8 -1: Some tests failed.
+
+Failing tests:
+  /home/zsig/Documents/gits/privet-app-wpr6/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)
+
+It fails identically with zero WP-R6 changes applied. No other test fails.
+
+NOTE on the stash step: `flutter test` rewrites analysis_options.yaml, which
+made `git stash pop` refuse to restore. Resolved with
+`git checkout -- analysis_options.yaml && git stash pop`. All 4 new files were
+verified byte-identical to their stashed copies before the stash was dropped
+(original_ref_store.dart 7357B, file_availability.dart 5038B,
+history_availability_test.dart 7656B, file_tree_availability_test.dart 3814B),
+and the full suite was re-run green (+222 -1) after recovery.
+
+================================================================================
+3. flutter build apk --release
+================================================================================
+Kotlin was changed (PrivetShareChannel forwards the original URIs), so the APK
+build is the compile proof.
+
+$ flutter build apk --release
+Running Gradle task 'assembleRelease'...
+Picked up JAVA_TOOL_OPTIONS: -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=4568 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=4568 -Dhttp.nonProxyHosts=localhost|127.0.0.1|10.*|172.16.*|192.168.*
+Font asset "MaterialIcons-Regular.otf" was tree-shaken, reducing it from 1645184 to 8564 bytes (99.5% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
+Running Gradle task 'assembleRelease'...                           76.2s
+✓ Built build/app/outputs/flutter-apk/app-release.apk (76.2MB)
+(exit 0)
+
+$ sha256sum build/app/outputs/flutter-apk/app-release.apk
+e71d5c2b7ac537237f2cca6d5ab3c773135c7852f445d889c654657eb31a3e2f  build/app/outputs/flutter-apk/app-release.apk
+
+$ ls -l build/app/outputs/flutter-apk/app-release.apk
+-rw-rw-r-- 1 zsig zsig 76243301 Oct  6 18:26 build/app/outputs/flutter-apk/app-release.apk
+
+NOT installed: `adb install` was deliberately not run, per this package's
+instructions (R4 will do one unified build+install to avoid two APKs fighting
+over one phone).
+
+================================================================================
+4. NO NEW STORAGE PERMISSIONS
+================================================================================
+$ grep -n "uses-permission" android/app/src/main/AndroidManifest.xml
+3:    <uses-permission android:name="android.permission.INTERNET"/>
+4:    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+5:    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+6:    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
+8:    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+9:    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+10:    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+$ git diff -- android/app/src/main/AndroidManifest.xml
+(empty)
+
+Identical to the pre-existing set. No MANAGE_EXTERNAL_STORAGE, no
+READ_MEDIA_*, no READ_EXTERNAL_STORAGE. The manifest file is not even touched
+by this change, so there is nothing to add to it at review time.
+
+================================================================================
+5. PRE-EXISTING FILES LEFT ALONE
+================================================================================
+- android/local.properties and jniLibs/*/libprivetd_embed.so: untouched, not
+  committed.
+- ../privet and ../privet-cli: NOT modified. No engine/IPC change was needed.
+- Main checkout /home/zsig/Documents/gits/privet-app: verified zero local
+  modifications (all work happened in the wp-r6 worktree).
