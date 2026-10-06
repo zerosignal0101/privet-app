@@ -68,9 +68,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # Android: cross-compiled privetd ELF per ABI, extracted and spawned in the
-  # app sandbox by AndroidDaemonBundle (see tool/build_privetd.sh).
-  assets:
+  # No `assets:` block: the cross-compiled privetd ELF that used to live under
+  # assets/bin was dead (Android dlopens libprivetd_embed.so from jniLibs) and is
+  # no longer bundled. AndroidDaemonBundle still handles the jniLibs library; see
+  # tool/build_privetd.sh.
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

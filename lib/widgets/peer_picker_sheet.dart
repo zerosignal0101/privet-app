@@ -5,27 +5,28 @@ import '../providers/peers.dart';
 
 /// Bottom sheet for picking a peer to send files to. Nearby items return a
 /// **fingerprint** — the daemon's `send` is keyed by trusted fingerprint.
-/// "Send by Address" is a pair-by-address flow wired by the caller (Task 9).
+/// "Send by Address" takes an IP instead and lets the caller decide whether it
+/// is a send (the address belongs to a paired device) or a pairing.
 class PeerPickerSheet extends ConsumerStatefulWidget {
   final void Function(String fingerprint, {String? name}) onSelected;
-  final VoidCallback? onPairByAddress;
+  final VoidCallback? onSendByAddress;
 
   const PeerPickerSheet({
     super.key,
     required this.onSelected,
-    this.onPairByAddress,
+    this.onSendByAddress,
   });
 
   static Future<void> show(
     BuildContext context, {
     required void Function(String fingerprint, {String? name}) onSelected,
-    VoidCallback? onPairByAddress,
+    VoidCallback? onSendByAddress,
   }) {
     return showModalBottomSheet(
       context: context,
       builder: (_) => PeerPickerSheet(
         onSelected: onSelected,
-        onPairByAddress: onPairByAddress,
+        onSendByAddress: onSendByAddress,
       ),
     );
   }
@@ -77,14 +78,14 @@ class _PeerPickerSheetState extends ConsumerState<PeerPickerSheet> {
               ),
             ),
             const Divider(height: 1),
-            if (widget.onPairByAddress != null)
+            if (widget.onSendByAddress != null)
               ListTile(
                 leading: const Icon(Icons.input),
                 title: const Text('Send by Address'),
-                subtitle: const Text('Pair by address, then send'),
+                subtitle: const Text('Reach a device by IP — paired or new'),
                 onTap: () {
                   Navigator.pop(context);
-                  widget.onPairByAddress!();
+                  widget.onSendByAddress!();
                 },
               ),
             ListTile(

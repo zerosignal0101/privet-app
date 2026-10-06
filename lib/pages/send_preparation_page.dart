@@ -311,25 +311,36 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
       context,
       onSelected: (fp, {name}) =>
           ref.read(sendPreparationProvider.notifier).setPeer(fp, name: name),
-      onPairByAddress: () => _pairByAddress(context, ref),
+      onSendByAddress: () => _sendByAddress(context, ref),
     );
   }
 
-  /// Pair-by-address flow: ask for an IP (port optional), then the code the
-  /// remote device is displaying, then `pair(ip, quicPort, tcpPort, code)`.
+  /// Send-by-address flow: ask for an IP (port optional), then decide whether
+  /// this is a send or a pairing.
   ///
   /// This is the manual counterpart to discovery, for networks where beacons
   /// don't get through (AP client isolation). The address the other device's
   /// "This Machine" section copies is exactly what is accepted here.
-  Future<void> _pairByAddress(BuildContext context, WidgetRef ref) async {
+  ///
+  /// The address is resolved against the trust store *before* any code is
+  /// requested. A device this daemon already trusts carries the addresses it has
+  /// been reached at — pairing records one, and every completed transfer
+  /// re-records one — so a typed address that matches means "send to a device I
+  /// already have", and asking it for another code would be friction this path
+  /// exists to remove. Pairing is entered only when the address belongs to no
+  /// trusted device, which is the one case where a code is the only way to learn
+  /// who is on the other end.
+  Future<void> _sendByAddress(BuildContext context, WidgetRef ref) async {
     final result = await showDialog<({String? value, bool ok, String? error})>(
       context: context,
       builder: (ctx) => _TextEntryDialog(
-        title: 'Pair by Address',
+        title: 'Send by Address',
         label: 'IP:Port',
         hint: '10.29.210.120  (port optional)',
         helper: 'Port is optional — omit it to use $kDefaultPort. '
-            'IPv6 looks like [fe80::1]:$kDefaultPort',
+            'IPv6 looks like [fe80::1]:$kDefaultPort. '
+            'A device you already paired with is sent to directly; only a new '
+            'one asks for its pairing code.',
         submitLabel: 'Next',
         onSubmit: (value) async => (value: value, ok: true, error: null),
       ),
@@ -341,6 +352,47 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
     if (parsed == null) {
       if (mounted) {
         _showSnackBar('Could not read that address — expected IP or IP:Port');
+      }
+      return;
+    }
+
+    // Known address => this is a send, not a pairing. Two sources can identify
+    // the device: the addresses the trust store remembers (pairing records one,
+    // and every completed transfer re-records one), and the candidates a peer
+    // currently on the air is advertising. The second matters when a device is
+    // broadcasting an address we have not recorded yet — it is still a device we
+    // already have, so it is still not something to re-pair.
+    final trusted = await ref.read(trustedListProvider.future);
+    final trustedFingerprints = {
+      for (final peer in trusted) peer.deviceFingerprint,
+    };
+    final matches = <String>{
+      for (final peer in trusted)
+        if (peer.addresses.any((addr) => addr.ip == parsed.ip))
+          peer.deviceFingerprint,
+      for (final peer in ref.read(peerListProvider))
+        if (trustedFingerprints.contains(peer.deviceFingerprint) &&
+            peer.candidates.any((candidate) => candidate.ip == parsed.ip))
+          peer.deviceFingerprint,
+    };
+    if (matches.length == 1) {
+      final device = trusted.firstWhere(
+          (peer) => peer.deviceFingerprint == matches.single);
+      final notifier = ref.read(sendPreparationProvider.notifier);
+      notifier.setPeer(device.deviceFingerprint, name: device.deviceName);
+      notifier.setVia(parsed.ip);
+      if (mounted) {
+        _showSnackBar('${device.deviceName} is already paired — '
+            'sending to ${parsed.ip}');
+      }
+      return;
+    }
+    if (matches.length > 1) {
+      // Two trusted devices matching one address: guessing could send to the
+      // wrong one, so say so and let the user pick from the list.
+      if (mounted) {
+        _showSnackBar('${matches.length} paired devices match '
+            '${parsed.ip} — pick the one you mean from the list');
       }
       return;
     }
