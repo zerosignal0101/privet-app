@@ -9,6 +9,7 @@ import '../services/ipc/dto.dart';
 import '../services/pairing_url.dart';
 import '../state/daemon_state.dart';
 import '../utils/format.dart';
+import '../widgets/local_addresses.dart';
 import '../widgets/pairing_banner.dart';
 import '../widgets/transfer_tile.dart';
 import 'send_preparation_page.dart';
@@ -98,6 +99,14 @@ class _HomePageState extends ConsumerState<HomePage> {
               hosts: hosts,
               showQr: _showQr,
               onToggleQr: () => setState(() => _showQr = !_showQr),
+            ),
+
+            // This machine's own dialable addresses. Always shown (even when
+            // empty, which the section renders as a one-line notice) because
+            // on a client-isolated network this is the only way a user can
+            // pair: read the address here, type it into the other device.
+            LocalAddressesSection(
+              addrs: status?.localAddrs ?? const [],
             ),
 
             // Pairing requests

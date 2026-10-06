@@ -13,6 +13,7 @@ import '../providers/settings.dart';
 import '../services/android/content_uri_dir_helper.dart';
 import '../services/clipboard_service.dart';
 import '../state/daemon_state.dart';
+import '../utils/addr.dart';
 import '../utils/format.dart';
 import '../widgets/file_tree_view.dart';
 import '../widgets/peer_picker_sheet.dart';
@@ -45,7 +46,8 @@ class SendPreparationPage extends ConsumerStatefulWidget {
 
 class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
   bool _initialised = false;
-  static const int _defaultPort = 47808; // daemon QUIC_PORT / TCP_PORT
+  // daemon QUIC_PORT / TCP_PORT, used when the user types a bare IP
+  static const int _defaultPort = kDefaultPort;
 
   void _showSnackBar(String message,
       {Duration duration = const Duration(seconds: 2)}) {
@@ -285,15 +287,21 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
     );
   }
 
-  /// Pair-by-address flow: ask for an IP:Port, then the code the remote device
-  /// is displaying, then `pair(ip, quicPort, tcpPort, code)`.
+  /// Pair-by-address flow: ask for an IP (port optional), then the code the
+  /// remote device is displaying, then `pair(ip, quicPort, tcpPort, code)`.
+  ///
+  /// This is the manual counterpart to discovery, for networks where beacons
+  /// don't get through (AP client isolation). The address the other device's
+  /// "This Machine" section copies is exactly what is accepted here.
   Future<void> _pairByAddress(BuildContext context, WidgetRef ref) async {
     final result = await showDialog<({String? value, bool ok, String? error})>(
       context: context,
       builder: (ctx) => _TextEntryDialog(
         title: 'Pair by Address',
         label: 'IP:Port',
-        hint: '192.168.1.5:47808',
+        hint: '10.29.210.120  (port optional)',
+        helper: 'Port is optional — omit it to use $kDefaultPort. '
+            'IPv6 looks like [fe80::1]:$kDefaultPort',
         submitLabel: 'Next',
         onSubmit: (value) async => (value: value, ok: true, error: null),
       ),
@@ -301,19 +309,25 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
     final address = result?.value;
     if (address == null || address.isEmpty) return;
 
-    final ip = address.split(':').first;
-    final port =
-        int.tryParse(address.contains(':') ? address.split(':').last : '') ??
-            _defaultPort;
+    final parsed = parseDialString(address, defaultPort: _defaultPort);
+    if (parsed == null) {
+      if (mounted) {
+        _showSnackBar('Could not read that address — expected IP or IP:Port');
+      }
+      return;
+    }
 
     final service = ref.read(daemonStateProvider).service;
     if (service == null) return;
     final ok = await _enterTheirCode(
       title: 'Enter Pairing Code',
-      onPair: (code) =>
-          service.pair(ip: ip, quicPort: port, tcpPort: port, code: code),
+      onPair: (code) => service.pair(
+          ip: parsed.ip,
+          quicPort: parsed.port,
+          tcpPort: parsed.port,
+          code: code),
     );
-    if (ok && mounted) _showSnackBar('Paired with $ip');
+    if (ok && mounted) _showSnackBar('Paired with ${parsed.ip}');
   }
 
   /// Side B of the code exchange against a selected (untrusted) fingerprint.
@@ -897,6 +911,7 @@ class _TextEntryDialog extends StatefulWidget {
     required this.submitLabel,
     required this.onSubmit,
     this.keyboardType,
+    this.helper,
   });
 
   final String title;
@@ -904,6 +919,9 @@ class _TextEntryDialog extends StatefulWidget {
   final String hint;
   final String submitLabel;
   final TextInputType? keyboardType;
+
+  /// Optional secondary line under the field (format guidance, defaults).
+  final String? helper;
 
   /// Runs the value the user typed. Returning `(ok: true)` pops the dialog;
   /// throwing pops with an error record the caller shows.
@@ -945,6 +963,8 @@ class _TextEntryDialogState extends State<_TextEntryDialog> {
         decoration: InputDecoration(
           labelText: widget.label,
           hintText: widget.hint,
+          helperText: widget.helper,
+          helperMaxLines: 3,
         ),
         keyboardType: widget.keyboardType,
         autofocus: true,

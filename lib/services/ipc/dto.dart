@@ -1,3 +1,4 @@
+import '../../utils/addr.dart';
 import 'protocol.dart';
 
 export 'protocol.dart' show IpcProtocolException;
@@ -59,6 +60,22 @@ List<String> _requireStringList(Map<String, dynamic> json, String key) {
   }).toList();
 }
 
+/// Reads an optional list of nested DTOs. A missing key is an *absent* field,
+/// not a shape error, so it maps to an empty list — this is how additive
+/// daemon fields stay backward compatible with older builds.
+List<T> _optDtoList<T>(
+  Map<String, dynamic> json,
+  String key,
+  T Function(Map<String, dynamic>) parse,
+) {
+  final v = json[key];
+  if (v == null) return const [];
+  if (v is! List) throw IpcProtocolException('field "$key" must be a list');
+  return v
+      .map((e) => parse(e as Map<String, dynamic>))
+      .toList(growable: false);
+}
+
 void _rejectUnknown(Map<String, dynamic> json, Set<String> known) {
   final unknown = json.keys.where((k) => !known.contains(k)).toList();
   if (unknown.isNotEmpty) {
@@ -67,6 +84,45 @@ void _rejectUnknown(Map<String, dynamic> json, Set<String> known) {
 }
 
 // ---- DTO types -----------------------------------------------------------
+
+/// One dialable address of *this* machine, as reported by `get_status`
+/// (`local_addrs`). The engine only lists operational, non-loopback,
+/// non-unspecified interface addresses, IPv4 first, deduped and stably
+/// ordered, so the app can render them verbatim.
+///
+/// A machine with both wired and wireless NICs (or several IPv6 addresses)
+/// reports several entries; in client-isolated networks the user reads one off
+/// the screen and types/pastes it on the other device.
+class LocalAddrDto {
+  LocalAddrDto({
+    required this.ip,
+    required this.quicPort,
+    required this.tcpPort,
+  });
+
+  factory LocalAddrDto.fromJson(Map<String, dynamic> json) {
+    _rejectUnknown(json, {'ip', 'quic_port', 'tcp_port'});
+    return LocalAddrDto(
+      ip: _requireString(json, 'ip'),
+      quicPort: _requireInt(json, 'quic_port'),
+      tcpPort: _requireInt(json, 'tcp_port'),
+    );
+  }
+
+  final String ip;
+  final int quicPort;
+  final int tcpPort;
+
+  /// `ip:quic_port`, with IPv6 wrapped in brackets so the result can be pasted
+  /// straight into "pair by address" (`[fe80::1]:47808`).
+  String get dialString => formatDialString(ip, quicPort);
+
+  Map<String, dynamic> toJson() => {
+        'ip': ip,
+        'quic_port': quicPort,
+        'tcp_port': tcpPort,
+      };
+}
 
 class DaemonStatus {
   DaemonStatus({
@@ -77,12 +133,13 @@ class DaemonStatus {
     required this.quicAddr,
     required this.tcpAddr,
     required this.activeTransfers,
+    this.localAddrs = const [],
   });
 
   factory DaemonStatus.fromJson(Map<String, dynamic> json) {
     _rejectUnknown(json, {
       'protocol_version', 'daemon_version', 'session_id', 'device_fingerprint',
-      'quic_addr', 'tcp_addr', 'active_transfers',
+      'quic_addr', 'tcp_addr', 'active_transfers', 'local_addrs',
     });
     return DaemonStatus(
       protocolVersion: _requireInt(json, 'protocol_version'),
@@ -92,6 +149,10 @@ class DaemonStatus {
       quicAddr: _requireString(json, 'quic_addr'),
       tcpAddr: _requireString(json, 'tcp_addr'),
       activeTransfers: _requireStringList(json, 'active_transfers'),
+      // Additive field: daemons predating it omit `local_addrs` entirely, and
+      // that is not an error — it means "no addresses to offer" (empty list).
+      localAddrs:
+          _optDtoList(json, 'local_addrs', LocalAddrDto.fromJson),
     );
   }
 
@@ -103,6 +164,10 @@ class DaemonStatus {
   final String tcpAddr;
   final List<String> activeTransfers;
 
+  /// This machine's own dialable addresses. Empty when the daemon predates the
+  /// field, or when no interface qualifies.
+  final List<LocalAddrDto> localAddrs;
+
   Map<String, dynamic> toJson() => {
         'protocol_version': protocolVersion,
         'daemon_version': daemonVersion,
@@ -111,6 +176,7 @@ class DaemonStatus {
         'quic_addr': quicAddr,
         'tcp_addr': tcpAddr,
         'active_transfers': activeTransfers,
+        'local_addrs': localAddrs.map((a) => a.toJson()).toList(),
       };
 }
 

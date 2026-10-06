@@ -76,7 +76,15 @@ Map<String, dynamic> okPayload(String kind, Object? data) =>
 Map<String, dynamic> okResponse(String id, String kind, Object? data) =>
     serverMessage('response', {'request_id': id, 'payload': okPayload(kind, data)});
 
-Map<String, dynamic> statusResponse(String id) => okResponse(id, 'status', {
+Map<String, dynamic> statusResponse(String id) =>
+    statusResponseWithAddrs(id, null);
+
+/// A `get_status` fixture. [localAddrs] controls the additive `local_addrs`
+/// field: pass a list to include it, or null to omit it entirely (which is what
+/// a daemon predating the field sends, and must parse as an empty list).
+Map<String, dynamic> statusResponseWithAddrs(
+        String id, List<Map<String, dynamic>>? localAddrs) =>
+    okResponse(id, 'status', {
       'protocol_version': 1,
       'daemon_version': '0.1.0',
       'session_id': 'sess-A',
@@ -84,11 +92,15 @@ Map<String, dynamic> statusResponse(String id) => okResponse(id, 'status', {
       'quic_addr': 'q',
       'tcp_addr': 't',
       'active_transfers': <String>[],
+      'local_addrs': ?localAddrs,
     });
 
 /// Builds a script from a per-method handler map; the connection handshake
 /// (get_status + subscribe_events) is answered automatically. Handlers receive
 /// the request id and params, and return one server message.
+///
+/// A test that needs a specific status fixture (e.g. `local_addrs`) can
+/// override the handshake by putting its own `get_status` in [handlers].
 List<Map<String, dynamic>> Function(List<Map<String, dynamic>>) scriptFromHandlers(
     Map<String, Map<String, dynamic> Function(String id, Map<String, dynamic> params)>
         handlers) {
@@ -97,6 +109,8 @@ List<Map<String, dynamic>> Function(List<Map<String, dynamic>>) scriptFromHandle
         final request = req['request'] as Map<String, dynamic>;
         final method = request['method'] as String;
         final params = (request['params'] as Map<String, dynamic>?) ?? const {};
+        final h = handlers[method];
+        if (h != null) return h(id, params);
         switch (method) {
           case 'get_status':
             return statusResponse(id);
@@ -104,8 +118,6 @@ List<Map<String, dynamic>> Function(List<Map<String, dynamic>>) scriptFromHandle
             return okResponse(id, 'event_replay',
                 {'events': <dynamic>[], 'oldest_available': null, 'latest': 0});
         }
-        final h = handlers[method];
-        if (h == null) throw StateError('unexpected method: $method');
-        return h(id, params);
+        throw StateError('unexpected method: $method');
       }).toList();
 }
