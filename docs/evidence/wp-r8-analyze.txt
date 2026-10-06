@@ -1,0 +1,6 @@
+# WP-R8 — flutter analyze
+```
+$ flutter analyze
+Analyzing privet-app-wpr8...                                    
+No issues found! (ran in 1.4s)
+```

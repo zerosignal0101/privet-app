@@ -1,0 +1,23 @@
+# WP-R8 — the six required tests
+
+```
+$ flutter test test/pages/history_sent_file_open_test.dart --reporter expanded --timeout 30s
+00:00 +0: loading /home/zsig/Documents/gits/privet-app-wpr8/test/pages/history_sent_file_open_test.dart
+00:00 +0: 1. sent file with a reachable content:// original shows Open and opens the URI, not the deleted staging path
+00:01 +1: 2. sent file with a real-path original opens the original path, not the deleted staging copy
+00:01 +2: 3. sent file with no surviving original (stagedCopyCleaned) has no Open button
+00:01 +3: 4. received file whose path exists still opens by that path
+00:01 +4: 5. send preparation default is unchanged: Open only when the file exists, and a recorded path opens by path
+00:01 +5: 6. a URI open that is refused or throws surfaces an error instead of silently doing nothing
+00:02 +6: All tests passed!
+```
+
+## Test names (as required)
+```
+'1. sent file with a reachable content:// original shows Open and opens '
+'2. sent file with a real-path original opens the original path, not the '
+'3. sent file with no surviving original (stagedCopyCleaned) has no Open '
+'4. received file whose path exists still opens by that path'
+'5. send preparation default is unchanged: Open only when the file '
+'6. a URI open that is refused or throws surfaces an error instead of '
+```

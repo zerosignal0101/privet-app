@@ -1,0 +1,47 @@
+# WP-R8 — sent files must be openable from history
+
+## Branch / commit
+```
+wp/app-sent-open
+e8d67bde658070090bc756c1a9d94733b8ce0b4b
+```
+
+## Root cause
+`FileTreeView._buildNode` gated the open button on the *recorded* path existing:
+
+    onOpen: onOpenFile != null && node.fullPath != null && exists
+        ? () => onOpenFile!(node.fullPath!)
+        : null,
+
+For a received file the recorded path is the real saved file, so the button
+appears. For a sent file the recorded path is a one-shot staging copy that the
+send cache deletes by design once the transfer is terminal (R6 already labelled
+this `stagedCopyCleaned`), so `exists` was permanently false and the button
+never appeared — and opening that path would have been wrong anyway, because
+the copy is gone.
+
+The fix routes "open" to the file's *original reference* (R6/R7's
+`OriginalRefStore` entry), which is the file the user actually chose:
+  - `content://` -> `openContentUri` (ACTION_VIEW + read grant),
+  - real path   -> `OpenFilex.open(path)`, unchanged,
+  - no surviving original (`stagedCopyCleaned` / `inaccessible`) -> no button.
+
+## Design constraints honoured
+1. Additive only. `FileTreeView` gained two optional params
+   (`openRefByPath`, `onOpenRef`). With both null the widget takes the exact
+   previous branch, so `send_preparation_page.dart` (which passes neither, and
+   does open by path) is byte-for-byte unchanged — pinned by test 5.
+2. The original-ref path is still gated on an `accessible` verdict, so a
+   reference alone never conjures a button.
+3. Failure is reported: a refusing provider and a throwing channel both surface
+   `Could not open file: …`; nothing is swallowed.
+4. `lib/` + `test/` only, no new dependency, no `AndroidManifest.xml` change,
+   `../privet` and `../privet-cli` untouched.
+
+## Reuse (not re-invention)
+- `OriginalRef` / `OriginalRefStore` (lib/services/android/original_ref_store.dart)
+- `FileAvailability` / `FileAvailabilityResolver` (lib/services/file_availability.dart)
+- the history page's existing per-path resolution, now carried alongside the ref
+- `content_uri.openContentUri`, exposed through a new `ContentUriChannel` seam
+  (the real function guards on `Platform.isAndroid` and swallows channel errors,
+  so it is unobservable in a host test).

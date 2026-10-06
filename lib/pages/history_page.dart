@@ -7,6 +7,7 @@ import 'package:open_filex/open_filex.dart';
 import '../models/file_tree.dart';
 import '../providers/history.dart';
 import '../providers/send_preparation.dart';
+import '../services/android/content_uri_helper.dart' show ContentUriChannel;
 import '../services/android/original_ref_store.dart';
 import '../services/file_availability.dart';
 import '../services/ipc/dto.dart';
@@ -154,7 +155,8 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
         ),
         onExpansionChanged: _ensureDetail,
         children: [
-          _DetailSection(future: _detailFuture, onOpen: _openFile),
+          _DetailSection(
+              future: _detailFuture, onOpen: _openFile, onOpenRef: _openRef),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             child: Row(
@@ -207,10 +209,46 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
   Future<void> _openFile(String path) async {
     final result = await OpenFilex.open(path);
     if (result.type != ResultType.done && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open file: ${result.message}')),
-      );
+      _showOpenError(result.message);
     }
+  }
+
+  /// Opens the file the user actually handed us, addressed by its original
+  /// reference rather than by the staging copy the daemon recorded.
+  ///
+  /// A `content://` document has no filesystem path, so it goes to the system
+  /// viewer through the platform channel; a real-path original is opened by
+  /// path exactly like a received file. A provider that refuses the grant is
+  /// reported, never silently swallowed.
+  Future<void> _openRef(OriginalRef ref) async {
+    if (!ref.isContentUri) {
+      final path = ref.asPath;
+      if (path != null && path.isNotEmpty) {
+        await _openFile(path);
+        return;
+      }
+      _showOpenError('no usable path for this file');
+      return;
+    }
+    // A provider that throws is as much a refusal as one that returns false:
+    // either way the user gets told, instead of a button that did nothing.
+    bool opened;
+    try {
+      opened = await ContentUriChannel.open(ref.value);
+    } catch (e) {
+      if (mounted) _showOpenError('$e');
+      return;
+    }
+    if (!opened && mounted) {
+      _showOpenError('no app could open this document');
+    }
+  }
+
+  void _showOpenError(String reason) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not open file: $reason')),
+    );
   }
 
   Future<void> _resend(BuildContext context, WidgetRef ref) async {
@@ -315,8 +353,13 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
 class _DetailSection extends StatelessWidget {
   final Future<HistoryDetailDto>? future;
   final Future<void> Function(String path) onOpen;
+  final Future<void> Function(OriginalRef ref) onOpenRef;
 
-  const _DetailSection({required this.future, required this.onOpen});
+  const _DetailSection({
+    required this.future,
+    required this.onOpen,
+    required this.onOpenRef,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -342,7 +385,8 @@ class _DetailSection extends StatelessWidget {
         final nodes = buildFileTreeFromHistoryFiles(detail.files);
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: _HistoryFileTree(nodes: nodes, onOpen: onOpen),
+          child: _HistoryFileTree(
+              nodes: nodes, onOpen: onOpen, onOpenRef: onOpenRef),
         );
       },
     );
@@ -360,20 +404,25 @@ class _DetailSection extends StatelessWidget {
 class _HistoryFileTree extends StatefulWidget {
   final List<FileTreeNode> nodes;
   final Future<void> Function(String path) onOpen;
+  final Future<void> Function(OriginalRef ref) onOpenRef;
 
-  const _HistoryFileTree({required this.nodes, required this.onOpen});
+  const _HistoryFileTree({
+    required this.nodes,
+    required this.onOpen,
+    required this.onOpenRef,
+  });
 
   @override
   State<_HistoryFileTree> createState() => _HistoryFileTreeState();
 }
 
 class _HistoryFileTreeState extends State<_HistoryFileTree> {
-  late Future<Map<String, FileAvailability>> _availability;
+  late Future<Map<String, _FileVerdict>> _verdicts;
 
   @override
   void initState() {
     super.initState();
-    _availability = _resolve();
+    _verdicts = _resolve();
   }
 
   @override
@@ -382,13 +431,18 @@ class _HistoryFileTreeState extends State<_HistoryFileTree> {
     // The detail FutureBuilder can hand us a different record's tree; never
     // show the previous record's verdicts against new nodes.
     if (!identical(oldWidget.nodes, widget.nodes)) {
-      _availability = _resolve();
+      _verdicts = _resolve();
     }
   }
 
   /// Resolves every leaf path in the tree. Failures resolve to "not accessible"
   /// rather than propagating, so one bad row can't blank the whole list.
-  Future<Map<String, FileAvailability>> _resolve() async {
+  ///
+  /// The original reference rides along with the verdict because it is the
+  /// thing "open" must target: the recorded path may be a staging copy the
+  /// send cache has already deleted, while the reference still points at the
+  /// user's own file.
+  Future<Map<String, _FileVerdict>> _resolve() async {
     final paths = <String>{};
     void walk(FileTreeNode node) {
       if (node.isDir) {
@@ -407,28 +461,45 @@ class _HistoryFileTreeState extends State<_HistoryFileTree> {
           originalRef: ref?.value,
           stagedPath: path,
         );
-        return MapEntry(path, availability);
+        return MapEntry(
+            path, _FileVerdict(availability: availability, ref: ref));
       } catch (_) {
-        return MapEntry(path, FileAvailability.inaccessible);
+        return MapEntry(path,
+            const _FileVerdict(availability: FileAvailability.inaccessible));
       }
     }));
-    return Map<String, FileAvailability>.fromEntries(entries);
+    return Map<String, _FileVerdict>.fromEntries(entries);
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, FileAvailability>>(
-      future: _availability,
+    return FutureBuilder<Map<String, _FileVerdict>>(
+      future: _verdicts,
       builder: (context, snapshot) {
         // Until verdicts land, fall back to the pre-existing exists-on-disk
         // rendering rather than flashing "not accessible" at a file that may
         // well be reachable.
-        final availability = snapshot.data;
+        final data = snapshot.data;
+        Map<String, FileAvailability>? availability;
+        Map<String, OriginalRef>? openRefByPath;
+        if (data != null) {
+          availability = {
+            for (final entry in data.entries) entry.key: entry.value.availability,
+          };
+          final refs = <String, OriginalRef>{};
+          for (final entry in data.entries) {
+            final ref = entry.value.ref;
+            if (ref != null) refs[entry.key] = ref;
+          }
+          openRefByPath = refs;
+        }
         return FileTreeView(
           nodes: widget.nodes,
           onOpenFile: widget.onOpen,
+          onOpenRef: widget.onOpenRef,
           formatSize: _formatSize,
           availabilityByPath: availability,
+          openRefByPath: openRefByPath,
         );
       },
     );
@@ -442,4 +513,17 @@ class _HistoryFileTreeState extends State<_HistoryFileTree> {
     }
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
+}
+
+/// What history resolved about one recorded file: whether the user's file is
+/// still reachable, and the original reference to reach it through.
+class _FileVerdict {
+  final FileAvailability availability;
+
+  /// The file the user actually handed us, when one was recorded for this
+  /// staging path. Null for a received file (the recorded path *is* the file)
+  /// or for a row written before original references were kept.
+  final OriginalRef? ref;
+
+  const _FileVerdict({required this.availability, this.ref});
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../models/file_tree.dart';
+import '../services/android/original_ref_store.dart' show OriginalRef;
 import '../services/file_availability.dart'
     show FileAvailability, stagedCopyCleanedMessage;
 
@@ -27,6 +28,21 @@ class FileTreeView extends StatelessWidget {
   /// exists-on-disk behaviour, so this stays optional for send preparation.
   final Map<String, FileAvailability>? availabilityByPath;
 
+  /// The file the user actually handed us, keyed by the *recorded* node path.
+  ///
+  /// History supplies this from `OriginalRefStore`. A node whose path is
+  /// absent from the map is unaffected: send preparation passes neither this
+  /// map nor a reference, and its staged files are openable by path, so the
+  /// exists-on-disk behaviour stays exactly as it was.
+  final Map<String, OriginalRef>? openRefByPath;
+
+  /// Opens a file through its original reference instead of through a path.
+  ///
+  /// Only meaningful for a `content://` reference, which has no filesystem
+  /// path to hand the system viewer. Supplied by history; a real-path
+  /// reference is opened through [onOpenFile] like any other path.
+  final Future<void> Function(OriginalRef ref)? onOpenRef;
+
   const FileTreeView({
     super.key,
     this.nodes = const [],
@@ -36,6 +52,8 @@ class FileTreeView extends StatelessWidget {
     this.formatSize,
     this.showSizeOnly = false,
     this.availabilityByPath,
+    this.openRefByPath,
+    this.onOpenRef,
   });
 
   @override
@@ -69,6 +87,8 @@ class FileTreeView extends StatelessWidget {
         formatSize: formatSize,
         showSizeOnly: showSizeOnly,
         availabilityByPath: availabilityByPath,
+        openRefByPath: openRefByPath,
+        onOpenRef: onOpenRef,
       );
     }
     final exists = node.fullPath != null && File(node.fullPath!).existsSync();
@@ -79,12 +99,21 @@ class FileTreeView extends StatelessWidget {
       onRemove: onRemoveFile != null
           ? () => onRemoveFile!(node.relativePath)
           : null,
-      // "Open" hands a real filesystem path to the system viewer, so it stays
-      // gated on the file actually being there — a reachable original
-      // reference does not make a deleted staging copy openable.
-      onOpen: onOpenFile != null && node.fullPath != null && exists
-          ? () => onOpenFile!(node.fullPath!)
-          : null,
+      // "Open" normally hands a real filesystem path to the system viewer, so
+      // it stays gated on the recorded path actually being there. When history
+      // recorded an original reference, that reference is the file's real
+      // identity — a `content://` document can only be opened as a URI, and a
+      // real-path original stays openable after its staging copy is cleaned
+      // up, so the reference wins over the discarded copy.
+      onOpen: _openViaOriginalRef(
+              fullPath: node.fullPath,
+              openRefByPath: openRefByPath,
+              availabilityByPath: availabilityByPath,
+              onOpenFile: onOpenFile,
+              onOpenRef: onOpenRef) ??
+          (onOpenFile != null && node.fullPath != null && exists
+              ? () => onOpenFile!(node.fullPath!)
+              : null),
       availability: showSizeOnly
           ? FileAvailability.accessible
           : _availabilityFor(node, exists),
@@ -112,6 +141,8 @@ class _DirectoryNode extends StatefulWidget {
   final String Function(int bytes)? formatSize;
   final bool showSizeOnly;
   final Map<String, FileAvailability>? availabilityByPath;
+  final Map<String, OriginalRef>? openRefByPath;
+  final Future<void> Function(OriginalRef ref)? onOpenRef;
 
   const _DirectoryNode({
     required this.node,
@@ -122,6 +153,8 @@ class _DirectoryNode extends StatefulWidget {
     this.formatSize,
     this.showSizeOnly = false,
     this.availabilityByPath,
+    this.openRefByPath,
+    this.onOpenRef,
   });
 
   @override
@@ -212,6 +245,8 @@ class _DirectoryNodeState extends State<_DirectoryNode> {
           formatSize: widget.formatSize,
           showSizeOnly: widget.showSizeOnly,
           availabilityByPath: widget.availabilityByPath,
+          openRefByPath: widget.openRefByPath,
+          onOpenRef: widget.onOpenRef,
         ));
       } else {
         final exists = child.fullPath != null && File(child.fullPath!).existsSync();
@@ -222,9 +257,15 @@ class _DirectoryNodeState extends State<_DirectoryNode> {
           onRemove: widget.onRemoveFile != null
               ? () => widget.onRemoveFile!(child.relativePath)
               : null,
-          onOpen: widget.onOpenFile != null && child.fullPath != null && exists
-              ? () => widget.onOpenFile!(child.fullPath!)
-              : null,
+          onOpen: _openViaOriginalRef(
+                  fullPath: child.fullPath,
+                  openRefByPath: widget.openRefByPath,
+                  availabilityByPath: widget.availabilityByPath,
+                  onOpenFile: widget.onOpenFile,
+                  onOpenRef: widget.onOpenRef) ??
+              (widget.onOpenFile != null && child.fullPath != null && exists
+                  ? () => widget.onOpenFile!(child.fullPath!)
+                  : null),
           availability: widget.showSizeOnly
               ? FileAvailability.accessible
               : _childAvailability(child, exists),
@@ -234,6 +275,33 @@ class _DirectoryNodeState extends State<_DirectoryNode> {
     }
     return widgets;
   }
+}
+
+/// The open action for a node whose original reference is on record, or null
+/// when there is none — in which case the caller keeps the path-based default.
+///
+/// A recorded reference only opens if history also judged it reachable, so
+/// `stagedCopyCleaned` and `inaccessible` still get no button: there is
+/// nothing there to open, and offering one would be a dead end.
+VoidCallback? _openViaOriginalRef({
+  required String? fullPath,
+  required Map<String, OriginalRef>? openRefByPath,
+  required Map<String, FileAvailability>? availabilityByPath,
+  required void Function(String path)? onOpenFile,
+  required Future<void> Function(OriginalRef ref)? onOpenRef,
+}) {
+  if (fullPath == null) return null;
+  final ref = openRefByPath?[fullPath];
+  if (ref == null) return null;
+  if (availabilityByPath?[fullPath] != FileAvailability.accessible) return null;
+  if (ref.isContentUri) {
+    final openRef = onOpenRef;
+    return openRef != null ? () => openRef(ref) : null;
+  }
+  final path = ref.asPath;
+  if (path == null || path.isEmpty) return null;
+  final openFile = onOpenFile;
+  return openFile != null ? () => openFile(path) : null;
 }
 
 class _FileNode extends StatelessWidget {

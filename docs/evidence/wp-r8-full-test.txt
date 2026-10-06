@@ -1,0 +1,33 @@
+# WP-R8 — full test suite (post-change)
+
+```
+$ flutter test --reporter expanded   # tail
+00:13 +230 -1: /home/zsig/Documents/gits/privet-app-wpr8/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses explicit empty list is an empty list
+00:13 +231 -1: /home/zsig/Documents/gits/privet-app-wpr8/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses parses every address in engine order with its ports
+00:13 +232 -1: /home/zsig/Documents/gits/privet-app-wpr8/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses latestAddress is the newest remembered one
+00:13 +233 -1: /home/zsig/Documents/gits/privet-app-wpr8/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses an IPv6 address renders bracketed
+00:13 +234 -1: /home/zsig/Documents/gits/privet-app-wpr8/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses round-trips through toJson including addresses
+00:13 +235 -1: /home/zsig/Documents/gits/privet-app-wpr8/test/ipc/dto_trusted_addresses_test.dart: TrustedPeerDto.addresses a malformed entry is still a loud protocol error
+00:13 +236 -1: /home/zsig/Documents/gits/privet-app-wpr8/test/ipc/transport_test.dart: MemoryTransport connects and echoes scripted replies
+00:13 +237 -1: /home/zsig/Documents/gits/privet-app-wpr8/test/ipc/transport_test.dart: MemoryTransport inject pushes a raw server frame
+00:14 +238 -1: /home/zsig/Documents/gits/privet-app-wpr8/test/ipc/client_test.dart: connect performs status and replay; dedupes events
+00:14 +239 -1: /home/zsig/Documents/gits/privet-app-wpr8/test/ipc/client_test.dart: call surfaces daemon errors as PrivetIpcException
+00:14 +240 -1: Some tests failed.
+
+Failing tests:
+  /home/zsig/Documents/gits/privet-app-wpr8/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)
+```
+
+## Count vs main baseline
+```
+baseline (main e8d67bd, before any WP-R8 change): 234 passed, 1 failed
+00:14 +240 -1: Some tests failed.
+after WP-R8:                                            240 passed, 1 failed
+delta: +6 passed, +0 unexpected failures
+```
+
+The only failure is the pre-existing, out-of-scope one (it fails identically on
+main e8d67bd, before any WP-R8 change; it was left alone as instructed):
+```
+  /home/zsig/Documents/gits/privet-app-wpr8/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)
+```
