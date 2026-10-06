@@ -955,6 +955,25 @@ class _ViaAddressSectionState extends State<_ViaAddressSection> {
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
+              const SizedBox(width: 4),
+              // The explanation used to sit under the field as a four-line
+              // paragraph, which cost more vertical space than the control it
+              // described. It is reference material, not something to read on
+              // every visit, so it lives behind the icon instead.
+              Tooltip(
+                message: 'Use this when the device cannot be discovered on this '
+                    'network (e.g. Wi-Fi with client isolation). The address is '
+                    'remembered after a successful send, so it is suggested '
+                    'next time. The port comes from the device record — only '
+                    'the IP is sent.',
+                triggerMode: TooltipTriggerMode.tap,
+                showDuration: const Duration(seconds: 8),
+                child: Icon(
+                  Icons.info_outline,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -970,14 +989,6 @@ class _ViaAddressSectionState extends State<_ViaAddressSection> {
               errorText: err,
               errorMaxLines: 2,
             ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Use this when the device cannot be discovered on this network '
-            '(e.g. Wi-Fi with client isolation). The address is remembered '
-            'after a successful send, so it is suggested next time. The port '
-            'comes from the device record — only the IP is sent.',
-            style: TextStyle(fontSize: 11, color: Colors.grey),
           ),
           if (others.isNotEmpty) ...[
             const SizedBox(height: 6),
