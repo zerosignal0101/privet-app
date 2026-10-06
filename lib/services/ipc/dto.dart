@@ -286,6 +286,49 @@ class PeerDto {
       };
 }
 
+/// One address the daemon has remembered for a *trusted* device.
+///
+/// The engine writes an entry back into the trust record after a successful
+/// transfer, which is what makes "send to the address I used last time" work
+/// without re-typing it. Entries are returned most-recent-first and capped at 8
+/// by the engine; the ordering is passed through untouched so the UI can show
+/// the freshest one first.
+class TrustedPeerAddressDto {
+  TrustedPeerAddressDto({
+    required this.ip,
+    required this.quicPort,
+    required this.tcpPort,
+    required this.lastSeenMs,
+  });
+
+  factory TrustedPeerAddressDto.fromJson(Map<String, dynamic> json) {
+    _rejectUnknown(json, {'ip', 'quic_port', 'tcp_port', 'last_seen_ms'});
+    return TrustedPeerAddressDto(
+      ip: _requireString(json, 'ip'),
+      quicPort: _requireInt(json, 'quic_port'),
+      tcpPort: _requireInt(json, 'tcp_port'),
+      lastSeenMs: _requireInt(json, 'last_seen_ms'),
+    );
+  }
+
+  final String ip;
+  final int quicPort;
+  final int tcpPort;
+  final int lastSeenMs;
+
+  /// `ip:quic_port`, IPv6 bracketed. Only for *display* — the `via` field sent
+  /// to the engine must be a bare IP, because the engine takes the port from
+  /// the device record it already holds.
+  String get dialString => formatDialString(ip, quicPort);
+
+  Map<String, dynamic> toJson() => {
+        'ip': ip,
+        'quic_port': quicPort,
+        'tcp_port': tcpPort,
+        'last_seen_ms': lastSeenMs,
+      };
+}
+
 class TrustedPeerDto {
   TrustedPeerDto({
     required this.deviceFingerprint,
@@ -296,12 +339,14 @@ class TrustedPeerDto {
     required this.lastSeenTs,
     required this.revokedTs,
     required this.revocationReason,
+    this.addresses = const [],
   });
 
   factory TrustedPeerDto.fromJson(Map<String, dynamic> json) {
     _rejectUnknown(json, {
       'device_fingerprint', 'device_name', 'trust_state', 'spki_hex',
       'first_paired_ts', 'last_seen_ts', 'revoked_ts', 'revocation_reason',
+      'addresses',
     });
     return TrustedPeerDto(
       deviceFingerprint: _requireString(json, 'device_fingerprint'),
@@ -312,6 +357,13 @@ class TrustedPeerDto {
       lastSeenTs: _requireInt(json, 'last_seen_ts'),
       revokedTs: _optInt(json, 'revoked_ts'),
       revocationReason: _optString(json, 'revocation_reason'),
+      // Additive field, same tolerance rule as `local_addrs`: a daemon that
+      // predates it omits the key entirely, which means "nothing remembered
+      // yet" — an empty list, not a protocol error. Rejecting the whole
+      // list_trusted response here would empty the whole Known Devices list and
+      // the recipient picker with it.
+      addresses:
+          _optDtoList(json, 'addresses', TrustedPeerAddressDto.fromJson),
     );
   }
 
@@ -324,6 +376,15 @@ class TrustedPeerDto {
   final int? revokedTs;
   final String? revocationReason;
 
+  /// Addresses the daemon has remembered for this device, most recent first.
+  /// Empty on an older daemon, or before the first successful transfer.
+  final List<TrustedPeerAddressDto> addresses;
+
+  /// The freshest remembered address, or null when none is known. This is what
+  /// the send page pre-fills the "address" box with.
+  TrustedPeerAddressDto? get latestAddress =>
+      addresses.isEmpty ? null : addresses.first;
+
   Map<String, dynamic> toJson() => {
         'device_fingerprint': deviceFingerprint,
         'device_name': deviceName,
@@ -333,6 +394,7 @@ class TrustedPeerDto {
         'last_seen_ts': lastSeenTs,
         'revoked_ts': revokedTs,
         'revocation_reason': revocationReason,
+        'addresses': addresses.map((a) => a.toJson()).toList(),
       };
 }
 

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/android/send_cache.dart';
 import '../state/daemon_state.dart';
+import '../utils/addr.dart';
 
 /// A file (or directory marker) chosen for sending, with both the absolute
 /// path (for the daemon) and the relative path (for the tree display).
@@ -28,6 +29,8 @@ class SendPreparationState {
     this.rootPaths = const [],
     this.peerFingerprint,
     this.peerName,
+    this.viaIp,
+    this.viaError,
     this.sending = false,
     this.error,
   });
@@ -41,10 +44,24 @@ class SendPreparationState {
 
   final String? peerFingerprint;
   final String? peerName;
+
+  /// Validated bare IP to send through, or null for "use the address the engine
+  /// already has". Deliberately the *stripped* IP: the engine reads the port
+  /// from the device record, so the port the user typed is not forwarded.
+  final String? viaIp;
+
+  /// Why the typed address was rejected. Non-null blocks sending, so an
+  /// unusable address never becomes a request the daemon must refuse.
+  final String? viaError;
+
   final bool sending;
   final String? error;
 
-  bool get isReady => rootPaths.isNotEmpty && peerFingerprint != null && !sending;
+  bool get isReady =>
+      rootPaths.isNotEmpty &&
+      peerFingerprint != null &&
+      !sending &&
+      viaError == null;
 
   int get totalSize => entries.fold(0, (sum, e) => sum + e.size);
 
@@ -53,10 +70,13 @@ class SendPreparationState {
     List<String>? rootPaths,
     String? peerFingerprint,
     String? peerName,
+    String? viaIp,
+    String? viaError,
     bool? sending,
     String? error,
     bool clearPeer = false,
     bool clearError = false,
+    bool clearVia = false,
   }) =>
       SendPreparationState(
         entries: entries ?? this.entries,
@@ -64,6 +84,11 @@ class SendPreparationState {
         peerFingerprint:
             clearPeer ? null : (peerFingerprint ?? this.peerFingerprint),
         peerName: clearPeer ? null : (peerName ?? this.peerName),
+        // A null viaIp means "no override". An explicit value wins over
+        // clearVia, so a single call can replace a stale address; clearVia on
+        // its own is how the box is emptied.
+        viaIp: viaIp ?? (clearVia ? null : this.viaIp),
+        viaError: viaError ?? (clearVia ? null : this.viaError),
         sending: sending ?? this.sending,
         error: clearError ? null : (error ?? this.error),
       );
@@ -196,6 +221,24 @@ class SendPreparationNotifier extends Notifier<SendPreparationState> {
     state = state.copyWith(peerFingerprint: fingerprint, peerName: name);
   }
 
+  /// Applies the address the user typed to the send-to-address box.
+  ///
+  /// Stores either the normalised bare IP or a user-facing error — the send
+  /// button goes disabled on the latter. Empty input clears the override
+  /// entirely, which is the default "dial what the engine has" behaviour and
+  /// must never be forced into an explicit address.
+  void setVia(String input) {
+    final parsed = parseViaAddress(input);
+    if (parsed.isValid) {
+      state = state.copyWith(clearVia: true, viaIp: parsed.ip);
+    } else if (parsed.error == null) {
+      // Empty box: drop the override and any error left from a previous edit.
+      state = state.copyWith(clearVia: true);
+    } else {
+      state = state.copyWith(clearVia: true, viaError: parsed.error);
+    }
+  }
+
   void clearPeer() {
     state = state.copyWith(clearPeer: true);
   }
@@ -204,13 +247,22 @@ class SendPreparationNotifier extends Notifier<SendPreparationState> {
 
   /// Sends the selected files to [state.peerFingerprint]. Returns the daemon's
   /// transfer id, or null on failure (surfaced in [SendPreparationState.error]).
+  ///
+  /// [SendPreparationState.viaIp] is passed through as the `via` override when
+  /// set; it is already a validated bare IP. A pending validation error aborts
+  /// before the call, so a typo never reaches the daemon.
   Future<String?> send() async {
     final service = ref.read(daemonStateProvider).service;
     final fp = state.peerFingerprint;
     if (service == null || fp == null || state.rootPaths.isEmpty) return null;
+    if (state.viaError != null) {
+      state = state.copyWith(error: state.viaError);
+      return null;
+    }
     state = state.copyWith(sending: true, clearError: true);
     try {
-      final transferId = await service.send(state.rootPaths, fp);
+      final transferId =
+          await service.send(state.rootPaths, fp, via: state.viaIp);
       await _trackTempForRelease(transferId);
       state = state.copyWith(sending: false, clearError: true);
       return transferId;

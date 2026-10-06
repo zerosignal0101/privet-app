@@ -46,11 +46,24 @@ Map<String, dynamic> reqRevokePeer(String fp, String reason) =>
     requestEnvelope('revoke_peer', {'device_fingerprint': fp, 'reason': reason});
 Map<String, dynamic> reqForgetPeer(String fp) =>
     requestEnvelope('forget_peer', {'device_fingerprint': fp});
-Map<String, dynamic> reqSend(List<String> paths, String fingerprint, {String? asName}) =>
+/// `send` with an optional explicit destination.
+///
+/// [via] must be a **bare IP** (IPv4 or IPv6, brackets optional), never
+/// `ip:port`: the engine looks the port up in the device record it already
+/// holds, so a port here is not just ignored — a ported string is rejected as
+/// an invalid address before the transfer is queued. Omitting [via] (null)
+/// keeps the default behaviour of dialling whatever the record says.
+Map<String, dynamic> reqSend(
+  List<String> paths,
+  String fingerprint, {
+  String? asName,
+  String? via,
+}) =>
     requestEnvelope('send', {
       'paths': paths,
       'device_fingerprint': fingerprint,
       'as_name': ?asName,
+      'via': ?via,
     });
 Map<String, dynamic> reqResumeTransfer(String id) =>
     requestEnvelope('resume_transfer', {'transfer_id': id});

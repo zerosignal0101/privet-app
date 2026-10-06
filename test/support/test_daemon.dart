@@ -121,3 +121,38 @@ List<Map<String, dynamic>> Function(List<Map<String, dynamic>>) scriptFromHandle
         throw StateError('unexpected method: $method');
       }).toList();
 }
+
+// ---- trusted-peer fixtures (list_trusted) ---------------------------------
+
+/// One `addresses` entry on a `list_trusted` record.
+Map<String, dynamic> trustedPeerAddress(
+        String ip, int quicPort, int tcpPort, int lastSeenMs) =>
+    {'ip': ip, 'quic_port': quicPort, 'tcp_port': tcpPort, 'last_seen_ms': lastSeenMs};
+
+/// A `list_trusted` record.
+///
+/// [addresses] controls the additive `addresses` field: pass a list to include
+/// it, or null to omit the key entirely — which is what a daemon predating the
+/// field sends, and must parse as an empty list rather than throwing.
+Map<String, dynamic> trustedPeer(
+  String fingerprint, {
+  String name = 'friend',
+  String trustState = 'Trusted',
+  List<Map<String, dynamic>>? addresses,
+}) =>
+    {
+      'device_fingerprint': fingerprint,
+      'device_name': name,
+      'trust_state': trustState,
+      'spki_hex': 'x',
+      'first_paired_ts': 1,
+      'last_seen_ts': 2,
+      'revoked_ts': null,
+      'revocation_reason': null,
+      'addresses': ?addresses,
+    };
+
+/// A `list_trusted` response carrying [peers].
+Map<String, dynamic> listTrustedResponse(
+        String id, List<Map<String, dynamic>> peers) =>
+    okResponse(id, 'trusted', peers);

@@ -140,7 +140,13 @@ class SettingsPage extends ConsumerWidget {
                   leading: const Icon(Icons.verified_user, size: 20),
                   title: Text(tp.deviceName),
                   subtitle: Text(
-                    shortFingerprint(tp.deviceFingerprint),
+                    [
+                      shortFingerprint(tp.deviceFingerprint),
+                      // Newest remembered address, so the user can see which IP
+                      // a previous successful send used (and reuse it verbatim
+                      // in the send page when discovery is unavailable).
+                      if (tp.latestAddress != null) tp.latestAddress!.dialString,
+                    ].join('\n'),
                     style: const TextStyle(
                         fontFamily: 'monospace', fontSize: 10, color: Colors.grey),
                   ),

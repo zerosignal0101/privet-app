@@ -33,8 +33,12 @@ class PrivetService {
   Future<void> revokePeer(String fingerprint, {String reason = ''}) =>
       _client.revokePeer(fingerprint, reason: reason);
   Future<void> forgetPeer(String fingerprint) => _client.forgetPeer(fingerprint);
-  Future<String> send(List<String> paths, String fingerprint, {String? asName}) =>
-      _client.send(paths, fingerprint, asName: asName);
+  /// [via] is an optional explicit destination as a **bare IP** (no port — the
+  /// engine takes the port from the device record). Null means "use the address
+  /// the engine already has for this peer".
+  Future<String> send(List<String> paths, String fingerprint,
+          {String? asName, String? via}) =>
+      _client.send(paths, fingerprint, asName: asName, via: via);
   Future<String> resumeTransfer(String transferId) => _client.resumeTransfer(transferId);
   Future<String> resendTransfer(String transferId) => _client.resendTransfer(transferId);
   Future<void> acceptTransfer(String transferId, {bool accept = true}) =>

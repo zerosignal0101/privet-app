@@ -110,9 +110,15 @@ class _PeerPickerSheetState extends ConsumerState<PeerPickerSheet> {
                       size: 20, color: online ? null : Colors.grey),
                   title: Text(tp.deviceName,
                       style: const TextStyle(fontSize: 14)),
+                  // The remembered address is the actionable part: it is what
+                  // the user can type into the send page when the device is not
+                  // discoverable, so it is surfaced next to the device name.
                   subtitle: Text(
-                    '${_shortFp(tp.deviceFingerprint)} · '
-                    '${online ? 'Online' : 'Offline'}',
+                    [
+                      _shortFp(tp.deviceFingerprint),
+                      online ? 'Online' : 'Offline',
+                      if (tp.latestAddress != null) tp.latestAddress!.dialString,
+                    ].join(' · '),
                     style: TextStyle(
                         fontSize: 11,
                         color: online ? Colors.grey : Colors.orange),

@@ -198,11 +198,17 @@ class PrivetIpcClient {
       callRaw('revoke_peer', {'device_fingerprint': fp, 'reason': reason});
   Future<void> forgetPeer(String fp) async =>
       callRaw('forget_peer', {'device_fingerprint': fp});
-  Future<String> send(List<String> paths, String fingerprint, {String? asName}) async {
+  /// Queues a send. [via] optionally overrides the destination address with a
+  /// **bare IP** — see [reqSend] for why it carries no port. The daemon rejects
+  /// a malformed `via` with an invalid-address error before queueing, so the
+  /// UI validates first rather than firing a request that cannot succeed.
+  Future<String> send(List<String> paths, String fingerprint,
+      {String? asName, String? via}) async {
     final data = await callRaw('send', {
       'paths': paths,
       'device_fingerprint': fingerprint,
       'as_name': ?asName,
+      'via': ?via,
     });
     return (data as Map<String, dynamic>)['transfer_id'] as String;
   }

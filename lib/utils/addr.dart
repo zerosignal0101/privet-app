@@ -71,3 +71,109 @@ String formatDialString(String ip, int port) =>
   if (ip.isEmpty) return null;
   return (ip: ip, port: parsed);
 }
+
+// ---- IP-literal validation (for the send-to-address box) --------------------
+
+bool isValidIpv4(String s) {
+  final parts = s.split('.');
+  if (parts.length != 4) return false;
+  for (final p in parts) {
+    if (p.isEmpty || p.length > 3) return false;
+    // Reject non-digits; `int.tryParse` would also accept a leading '+'/'-'.
+    if (!RegExp(r'^\d+$').hasMatch(p)) return false;
+    final v = int.parse(p);
+    if (v > 255) return false;
+    // No leading zeros: "010" is ambiguous (octal in some stacks) and a typo.
+    if (p.length > 1 && p.startsWith('0')) return false;
+  }
+  return true;
+}
+
+bool isValidIpv6(String s) {
+  if (s.isEmpty || s.contains('%')) return false; // no scope-id / zone here
+  // At most one "::" (IPv6 allows the :: compression exactly once).
+  final dbl = '::'.allMatches(s).length;
+  if (dbl > 1) return false;
+
+  var head = s;
+  var tail = '';
+  if (dbl == 1) {
+    final idx = s.indexOf('::');
+    head = s.substring(0, idx);
+    tail = s.substring(idx + 2);
+  }
+
+  final headParts = head.isEmpty ? <String>[] : head.split(':');
+  final tailParts = tail.isEmpty ? <String>[] : tail.split(':');
+
+  // A trailing IPv4-mapped form ("::ffff:192.168.1.1") is legal; it counts as
+  // two groups.
+  var groupCount = 0;
+  for (final parts in [headParts, tailParts]) {
+    for (int i = 0; i < parts.length; i++) {
+      final p = parts[i];
+      if (p.isEmpty) return false;
+      final isLastOfPart = i == parts.length - 1;
+      if (p.contains('.')) {
+        if (!isLastOfPart || !isValidIpv4(p)) return false;
+        groupCount += 2;
+        continue;
+      }
+      if (p.length > 4 || !RegExp(r'^[0-9a-fA-F]+$').hasMatch(p)) return false;
+      groupCount += 1;
+    }
+  }
+
+  if (dbl == 1) {
+    // "::" must stand for at least one omitted group.
+    return groupCount < 8;
+  }
+  return groupCount == 8;
+}
+
+/// True when [s] is a bare, well-formed IPv4 or IPv6 literal.
+bool isValidIpLiteral(String s) =>
+    s.isEmpty ? false : (isIpv6Literal(s) ? isValidIpv6(s) : isValidIpv4(s));
+
+/// The outcome of reading the "send to this address" box.
+class ViaAddress {
+  const ViaAddress._(this.ip, this.error);
+
+  /// The address is valid; [ip] is the bare IP to hand the engine as `via`.
+  const ViaAddress.valid(String ip) : this._(ip, null);
+
+  /// The input could not be used. [error] is user-facing; [ip] is null.
+  const ViaAddress.invalid(String error) : this._(null, error);
+
+  final String? ip;
+  final String? error;
+  bool get isValid => ip != null;
+}
+
+/// Normalises the address the user typed into the **bare IP** the engine's
+/// `via` field requires.
+///
+/// The box is deliberately forgiving: a port may be typed (it is stripped and
+/// otherwise ignored, because the engine takes the port from the device
+/// record), and IPv6 may be bracketed. But unlike [parseDialString] — which
+/// only splits, and is fine for pairing where the daemon reports the real
+/// failure — this validates the address itself, so an obvious typo is caught
+/// here instead of becoming a request the daemon is bound to reject.
+///
+/// An empty (or whitespace-only) input is valid and means "no override": the
+/// engine then dials the address already in the device record, which is the
+/// normal case and must not be forced into an explicit address.
+ViaAddress parseViaAddress(String input) {
+  final trimmed = input.trim();
+  if (trimmed.isEmpty) return const ViaAddress._(null, null);
+
+  final parsed = parseDialString(trimmed);
+  if (parsed == null) {
+    return const ViaAddress.invalid(
+        'Could not read that address — enter an IP, optionally with a port.');
+  }
+  if (!isValidIpLiteral(parsed.ip)) {
+    return ViaAddress.invalid('"${parsed.ip}" is not a valid IP address.');
+  }
+  return ViaAddress.valid(parsed.ip);
+}

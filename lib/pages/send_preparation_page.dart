@@ -12,6 +12,7 @@ import '../providers/send_preparation.dart';
 import '../providers/settings.dart';
 import '../services/android/content_uri_dir_helper.dart';
 import '../services/clipboard_service.dart';
+import '../services/ipc/dto.dart';
 import '../state/daemon_state.dart';
 import '../utils/addr.dart';
 import '../utils/format.dart';
@@ -150,10 +151,18 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(sendPreparationProvider);
     final trusted = ref.watch(trustedListProvider);
-    final trustedFps =
-        (trusted.value ?? const []).map((t) => t.deviceFingerprint).toSet();
+    final trustedPeers = trusted.value ?? const <TrustedPeerDto>[];
+    final trustedFps = trustedPeers.map((t) => t.deviceFingerprint).toSet();
     final needsPairing = state.peerFingerprint != null &&
         !trustedFps.contains(state.peerFingerprint);
+    // Addresses the daemon has remembered for the selected recipient, newest
+    // first. Drives both the pre-filled "address" box and the chips offering
+    // the other entries.
+    final selectedPeer = state.peerFingerprint == null
+        ? null
+        : trustedPeers
+            .where((t) => t.deviceFingerprint == state.peerFingerprint)
+            .firstOrNull;
     // A trusted recipient that is not currently discovered is offline — the send
     // must not go through (the daemon would only spin against a dead address).
     final onlineFps = ref.watch(onlinePeerFingerprintsProvider);
@@ -169,6 +178,18 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
           offline: selectedPeerOffline,
           onChangeTap: () => _pickPeer(context, ref),
         ),
+        // The address box only makes sense for an already-trusted device: the
+        // engine needs a trust record to send through, and an untrusted peer
+        // has to pair first.
+        if (!needsPairing && state.peerFingerprint != null)
+          _ViaAddressSection(
+            key: ValueKey('via-${state.peerFingerprint}'),
+            remembered: selectedPeer?.addresses ?? const [],
+            viaIp: state.viaIp,
+            error: state.viaError,
+            onChanged: (value) =>
+                ref.read(sendPreparationProvider.notifier).setVia(value),
+          ),
         const Divider(height: 1),
 
         if (needsPairing)
@@ -187,8 +208,15 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    '${state.peerName ?? 'This device'} is offline — turn it on '
-                    'or choose another recipient.',
+                    // With an address pinned the offline state is expected, not
+                    // an error: that is exactly the isolation case `via` exists
+                    // for, so the copy must not talk the user out of sending.
+                    state.viaIp != null
+                        ? '${state.peerName ?? 'This device'} is not '
+                            'discoverable — sending to ${state.viaIp} anyway.'
+                        : '${state.peerName ?? 'This device'} is offline — turn '
+                            'it on, enter its address to send without '
+                            'discovery, or choose another recipient.',
                     style: const TextStyle(
                         color: Colors.orange, fontSize: 12),
                   ),
@@ -610,11 +638,17 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
     // Guard against sending to a recipient that is not currently online: the
     // daemon would only retry a dead address and end in a confusing "Internal
     // Error" tile or a bare Failed history row. Give a clear message instead.
-    if (fp != null && !onlineFps.contains(fp)) {
+    //
+    // An explicit address is the documented way out: a device that cannot be
+    // discovered (client isolation, a beacon-blocking VLAN) is permanently
+    // "offline" here while being perfectly reachable by IP, so the offline gate
+    // must not apply once the user has pinned an address.
+    if (fp != null && !onlineFps.contains(fp) && s.viaIp == null) {
       ref.read(sendPreparationProvider.notifier).setError(
             '${s.peerName ?? 'The selected device'} is offline — it can\'t '
             'receive files right now. Make sure it is running and on the same '
-            'network, then try again.',
+            'network, then try again, or enter its address below to send '
+            'without discovery.',
           );
       return;
     }
@@ -659,6 +693,165 @@ class _RecipientSection extends StatelessWidget {
           ? Text(offline ? '${shortFingerprint(fp)} · offline' : shortFingerprint(fp))
           : null,
       trailing: TextButton(onPressed: onChangeTap, child: const Text('Change')),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Send-to-address section
+// ---------------------------------------------------------------------------
+
+/// Lets the user pin the send to a specific IP of an already-trusted device.
+///
+/// This is the escape hatch for networks where discovery cannot work — a campus
+/// AP with client isolation, a VLAN that blocks the beacon — where the device is
+/// paired but never shows up as "online", so discovery has nothing to dial. The
+/// daemon remembers the address after a successful transfer, so the box is
+/// pre-filled with the newest remembered one and the common case needs no typing
+/// at all.
+///
+/// The port is intentionally ignored: the engine reads it from the device record
+/// it already holds, so only the bare IP is forwarded as `via`.
+class _ViaAddressSection extends StatefulWidget {
+  const _ViaAddressSection({
+    super.key,
+    required this.remembered,
+    required this.viaIp,
+    required this.error,
+    required this.onChanged,
+  });
+
+  final List<TrustedPeerAddressDto> remembered;
+  final String? viaIp;
+  final String? error;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_ViaAddressSection> createState() => _ViaAddressSectionState();
+}
+
+class _ViaAddressSectionState extends State<_ViaAddressSection> {
+  late final TextEditingController _controller = TextEditingController();
+  bool _prefilled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _schedulePrefill();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ViaAddressSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Re-prefill when the daemon reports a different set of remembered
+    // addresses for the same device (e.g. a background list_trusted refresh
+    // returning a newer entry).
+    if (oldWidget.remembered != widget.remembered) {
+      _schedulePrefill();
+    }
+  }
+
+  /// Seeds the box from the device's newest remembered address, once per
+  /// recipient.
+  ///
+  /// The provider write is deferred to a post-frame callback on purpose:
+  /// `onChanged` mutates [sendPreparationProvider], and Riverpod forbids
+  /// touching a provider during the build/lifecycle phase. It also means the
+  /// first frame renders the (empty) box before the prefill lands.
+  ///
+  /// After this has run once, the user's own text wins — a later refresh must
+  /// not overwrite what they typed or clear their edit.
+  void _schedulePrefill() {
+    if (_prefilled) return;
+    final latest = widget.remembered.isEmpty ? null : widget.remembered.first;
+    if (latest == null) return;
+    _prefilled = true;
+    // Prefill the bare IP: the port in the record is what the engine dials, and
+    // showing it would suggest it needs to be typed too.
+    final ip = latest.ip;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _controller.text = ip;
+      widget.onChanged(ip);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final err = widget.error;
+    final others = widget.remembered.length > 1
+        ? widget.remembered.skip(1).toList()
+        : const <TrustedPeerAddressDto>[];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.alternate_email, size: 16, color: Colors.grey),
+              const SizedBox(width: 6),
+              Text(
+                'Send to address',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            key: const Key('via-address-field'),
+            controller: _controller,
+            onChanged: widget.onChanged,
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+            decoration: InputDecoration(
+              isDense: true,
+              border: const OutlineInputBorder(),
+              hintText: 'Leave empty to use the remembered address',
+              errorText: err,
+              errorMaxLines: 2,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Use this when the device cannot be discovered on this network '
+            '(e.g. Wi-Fi with client isolation). The address is remembered '
+            'after a successful send, so it is suggested next time. The port '
+            'comes from the device record — only the IP is sent.',
+            style: TextStyle(fontSize: 11, color: Colors.grey),
+          ),
+          if (others.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: others
+                  .map((a) => ActionChip(
+                        avatar: const Icon(Icons.history, size: 14),
+                        label: Text(a.ip,
+                            style: const TextStyle(
+                                fontFamily: 'monospace', fontSize: 11)),
+                        tooltip: 'Use ${a.ip}',
+                        onPressed: () {
+                          _controller.text = a.ip;
+                          widget.onChanged(a.ip);
+                        },
+                      ))
+                  .toList(),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
