@@ -12,9 +12,11 @@ import '../services/ipc/dto.dart';
 /// "pair by address" on the other, so the copied text must be exactly the
 /// displayed text, in a form the pair-by-address parser accepts.
 ///
-/// Every address is listed, not just the first: a host with both wired and
-/// wireless NICs (or several IPv6 addresses) has several, and which one the
-/// peer can reach depends on their network, not ours.
+/// Every address the daemon reports is listed, not just the first: a host with
+/// wired and wireless NICs has several, and which one the peer can reach depends
+/// on their network, not ours. The daemon reports IPv4 only, which is what keeps
+/// this a short list -- a phone on mobile data and Wi-Fi at once would otherwise
+/// contribute a dozen IPv6 literals nobody is going to read off a screen.
 class LocalAddressesSection extends StatelessWidget {
   final List<LocalAddrDto> addrs;
 

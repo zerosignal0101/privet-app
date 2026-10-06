@@ -86,13 +86,19 @@ void _rejectUnknown(Map<String, dynamic> json, Set<String> known) {
 // ---- DTO types -----------------------------------------------------------
 
 /// One dialable address of *this* machine, as reported by `get_status`
-/// (`local_addrs`). The engine only lists operational, non-loopback,
-/// non-unspecified interface addresses, IPv4 first, deduped and stably
-/// ordered, so the app can render them verbatim.
+/// (`local_addrs`). The engine lists operational, non-loopback,
+/// non-unspecified IPv4 interface addresses, deduped and stably ordered
+/// (routable first, link-local last), so the app can render them verbatim.
 ///
-/// A machine with both wired and wireless NICs (or several IPv6 addresses)
-/// reports several entries; in client-isolated networks the user reads one off
-/// the screen and types/pastes it on the other device.
+/// IPv4 only on purpose: a phone on Wi-Fi and cellular at once reports dozens of
+/// IPv6 entries and the list stops being readable exactly when the user has to
+/// read one out. The display side is IPv4-only; the *input* side
+/// (`parseDialString`, `parseViaAddress`) still accepts IPv6 literals, because a
+/// peer may legitimately be reachable only over IPv6.
+///
+/// A machine with several NICs reports several entries; in client-isolated
+/// networks the user reads one off the screen and types/pastes it on the other
+/// device.
 class LocalAddrDto {
   LocalAddrDto({
     required this.ip,
