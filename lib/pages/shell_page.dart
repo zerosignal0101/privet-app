@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import '../providers/peers.dart';
 import '../providers/pending_share.dart';
 import '../providers/send_preparation.dart';
+import '../services/android/original_ref_store.dart';
 import '../services/clipboard_service.dart';
 import '../services/deeplink_service.dart';
 import '../services/pairing_url.dart';
@@ -92,7 +93,8 @@ class _ShellPageState extends ConsumerState<ShellPage> {
   /// already cached by the native side; shared text is written to a temp file.
   Future<void> _navigateToSendPreparation(PendingShareData data) async {
     final entries = <SendFileEntry>[];
-    for (final path in data.paths) {
+    for (var i = 0; i < data.paths.length; i++) {
+      final path = data.paths[i];
       final file = File(path);
       if (file.existsSync()) {
         entries.add(SendFileEntry(
@@ -100,6 +102,15 @@ class _ShellPageState extends ConsumerState<ShellPage> {
           relativePath: path.split(RegExp(r'[/\\]')).last,
           size: file.lengthSync(),
         ));
+        // Persist which document this cached copy came from, while we still
+        // know it. The native side deletes these copies after the transfer, so
+        // without this history would later see a missing path and blame the
+        // user's file. `uris` is index-aligned with `paths`; a shorter list
+        // (older native build) simply leaves the mapping absent.
+        if (i < data.uris.length) {
+          final ref = normalizeOriginalRef(data.uris[i]);
+          if (ref != null) await OriginalRefStore.record(path, ref);
+        }
       }
     }
     final text = data.text;

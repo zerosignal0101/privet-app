@@ -11,6 +11,7 @@ import '../providers/peers.dart';
 import '../providers/send_preparation.dart';
 import '../providers/settings.dart';
 import '../services/android/content_uri_dir_helper.dart';
+import '../services/android/original_ref_store.dart';
 import '../services/clipboard_service.dart';
 import '../services/ipc/dto.dart';
 import '../state/daemon_state.dart';
@@ -595,8 +596,26 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
   Future<void> _pickFiles(WidgetRef ref) async {
     final result = await FilePicker.platform.pickFiles(allowMultiple: true);
     if (result != null && result.files.isNotEmpty) {
-      final paths = result.files.map((f) => f.path!).toList();
-      ref.read(sendPreparationProvider.notifier).addFiles(paths);
+      final paths = <String>[];
+      for (final f in result.files) {
+        final stagedPath = f.path;
+        if (stagedPath == null) continue;
+        paths.add(stagedPath);
+        // On Android `file_picker` copies each chosen file into the app cache
+        // and returns that copy's path, hiding the real `content://` URI in
+        // `identifier` (FileInfo.java puts `uri.toString()` there). That copy is
+        // deleted by design once the transfer ends, so without recording the
+        // identifier here history would later see a path that no longer exists
+        // and wrongly report the user's file as inaccessible. Persist the
+        // association now, while we still know it.
+        final ref = normalizeOriginalRef(f.identifier);
+        if (ref != null) {
+          await OriginalRefStore.record(stagedPath, ref);
+        }
+      }
+      if (paths.isNotEmpty) {
+        ref.read(sendPreparationProvider.notifier).addFiles(paths);
+      }
     }
   }
 

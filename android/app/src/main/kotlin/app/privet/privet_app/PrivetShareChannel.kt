@@ -49,6 +49,11 @@ class PrivetShareChannel(private val activity: Activity) {
         if (intent == null) return
         val action = intent.action ?: return
         val paths = mutableListOf<String>()
+        // Original `content://` references, positionally aligned with `paths`.
+        // The cached copies are deleted by design once their transfer ends, so
+        // history can only say whether the shared file still exists if it knows
+        // which URI each copy came from. Dart pairs them by index.
+        val originalUris = mutableListOf<String>()
         var text: String? = null
         try {
             when (action) {
@@ -57,12 +62,21 @@ class PrivetShareChannel(private val activity: Activity) {
                         text = intent.getStringExtra(Intent.EXTRA_TEXT)
                     } else {
                         val uri = shareUri(intent)
-                        if (uri != null) copyFileToCache(uri)?.let { paths.add(it) }
+                        if (uri != null) {
+                            copyFileToCache(uri)?.let {
+                                paths.add(it)
+                                originalUris.add(uri.toString())
+                            }
+                        }
                     }
                 }
                 Intent.ACTION_SEND_MULTIPLE -> {
-                    val uris = shareUris(intent)
-                    uris?.forEach { copyFileToCache(it)?.let { paths.add(it) } }
+                    shareUris(intent)?.forEach { uri ->
+                        copyFileToCache(uri)?.let {
+                            paths.add(it)
+                            originalUris.add(uri.toString())
+                        }
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -71,6 +85,7 @@ class PrivetShareChannel(private val activity: Activity) {
         if (paths.isEmpty() && (text == null || text.isBlank())) return
         val args = mutableMapOf<String, Any?>()
         if (paths.isNotEmpty()) args["paths"] = paths
+        if (originalUris.isNotEmpty()) args["uris"] = originalUris
         if (text != null) args["text"] = text
         pendingShareArgs = args
     }

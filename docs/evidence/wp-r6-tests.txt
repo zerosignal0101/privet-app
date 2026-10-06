@@ -1,0 +1,110 @@
+WP-R6 — test evidence
+Branch: wp/app-history-original-path
+
+================================================================================
+THE 7 REQUIRED TESTS
+================================================================================
+File: test/services/android/history_availability_test.dart
+
+$ flutter test test/services/android/history_availability_test.dart
+
+00:00 +0: loading /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/history_availability_test.dart
+00:00 +0: 1. picker result (staged copy + content URI) is judged by URI reachability
+00:00 +1: 2. staged copy already cleaned but the original URI is still reachable (core regression)
+00:00 +2: 3. an original reference that is a real path is judged by File.exists
+00:00 +3: 4. no original reference + a cleaned staging path must never claim the user's file is inaccessible
+00:00 +4: 5. no reference, path is not a staging copy, and it is missing: unchanged behaviour
+00:00 +5: 6. a throwing or unreachable content URI is treated as unreachable
+00:00 +6: 7. regression: the staged copy is never treated as the file's identity
+00:00 +7: All tests passed!
+
+Mapping to the requirement:
+  1 -> "picker result ... judged by URI reachability"
+       Also asserts the URI (not the path) was probed, and the recorded size
+       path renders as accessible.
+  2 -> "staged copy already cleaned but the original URI is still reachable"
+       The core regression: the staged file does not exist, the URI resolves,
+       verdict is still accessible.
+  3 -> "an original reference that is a real path is judged by File.exists"
+       Also asserts no content-URI probe happened for a real path.
+  4 -> "no original reference + a cleaned staging path must never claim ..."
+       Asserts availabilitySubtitle != 'File not accessible'.
+  5 -> "no reference, path is not a staging copy, and it is missing"
+       Asserts the old wording is retained exactly.
+  6 -> "a throwing or unreachable content URI is treated as unreachable"
+       Covers throw, false, and the case where the staged copy IS on disk (must
+       not fall through to it).
+  7 -> "regression: the staged copy is never treated as the file's identity"
+       Two sends of the same file name -> two staged paths, two mappings, each
+       row judged by its own URI. Locks the invariant that once a reference is on
+       record the staged copy's existence is never consulted.
+
+================================================================================
+ADDITIONAL WIDGET-LEVEL TESTS (rendering, not just the verdict)
+================================================================================
+File: test/widgets/file_tree_availability_test.dart
+
+$ flutter test test/widgets/file_tree_availability_test.dart
+
+00:00 +0: loading /home/zsig/Documents/gits/privet-app-wpr6/test/widgets/file_tree_availability_test.dart
+00:00 +0: a reachable file shows its recorded size
+00:00 +1: a cleaned staging copy never says "File not accessible"
+00:00 +2: a genuinely missing file keeps the old warning
+00:00 +3: with no availability map the widget keeps its previous behaviour
+00:00 +4: nested files inside a directory node are labelled too
+00:01 +5: All tests passed!
+
+These assert on the RENDERED string, so the literal 'File not accessible' is
+guarded at the UI level, not merely in the resolver's return value.
+
+================================================================================
+MUTATION TESTING — the tests are not vacuous
+================================================================================
+A green suite proves nothing unless the assertions are load-bearing. Two
+mutations were applied to lib/services/file_availability.dart and reverted.
+
+--------------------------------------------------------------------------------
+MUTATION 1 — ignore the original reference (restore the old behaviour entirely)
+--------------------------------------------------------------------------------
+    final ref = normalizeOriginalRef(originalRef);
+ -> final ref = null as OriginalRef?; // MUTATION: ignore original ref
+
+$ flutter test test/services/android/history_availability_test.dart
+00:00 +0 -2: 2. staged copy already cleaned but the original URI is still reachable (core regression) [E]
+00:00 +0 -2: 3. an original reference that is a real path is judged by File.exists
+00:00 +0 -3: 3. an original reference that is a real path is judged by File.exists [E]
+00:00 +0 -3: 4. no original reference + a cleaned staging path must never claim the user's file is inaccessible
+00:00 +1 -3: 5. no reference, path is not a staging copy, and it is missing: unchanged behaviour
+00:00 +2 -3: 6. a throwing or unreachable content URI is treated as unreachable
+00:00 +2 -4: 6. a throwing or unreachable content URI is treated as unreachable [E]
+00:00 +2 -4: 7. regression: the staged copy is never treated as the file's identity
+00:00 +2 -5: 7. regression: the staged copy is never treated as the file's identity [E]
+00:00 +2 -5: Some tests failed.
+
+Killed tests 1, 2, 3, 6, 7.
+Tests 4 and 5 correctly SURVIVED: they cover the preserved fallback paths and
+must pass in both old and new behaviour by design.
+
+--------------------------------------------------------------------------------
+MUTATION 2 — tell the old lie again for cleaned staging copies
+--------------------------------------------------------------------------------
+    if (await _probe(() => isCachePath(stagedPath))) {
+      return FileAvailability.stagedCopyCleaned;
+ -> if (await _probe(() => isCachePath(stagedPath))) {
+      return FileAvailability.inaccessible; // MUTATION: lie again
+    }
+
+$ flutter test test/services/android/history_availability_test.dart
+00:00 +3 -1: 4. no original reference + a cleaned staging path must never claim the user's file is inaccessible [E]
+00:00 +3 -1: 5. no reference, path is not a staging copy, and it is missing: unchanged behaviour
+00:00 +4 -1: 6. a throwing or unreachable content URI is treated as unreachable
+00:00 +5 -1: 7. regression: the staged copy is never treated as the file's identity
+00:00 +6 -1: Some tests failed.
+
+Killed exactly test 4 — the anti-lying assertion — and nothing else, which shows
+the "never say File not accessible about a cleaned copy" rule is guarded on its
+own rather than incidentally by another test.
+
+Both mutations were reverted; the suite was re-run green afterwards:
+$ flutter test test/services/android/history_availability_test.dart
+00:00 +7: All tests passed!

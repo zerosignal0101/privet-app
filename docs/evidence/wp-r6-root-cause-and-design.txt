@@ -1,0 +1,224 @@
+WP-R6 — privet-app: history must judge a sent file by its ORIGINAL reference,
+not by the disposable staging copy the daemon recorded.
+
+================================================================================
+1. ROOT CAUSE — verified at source level (all paths read firsthand)
+================================================================================
+
+The bug: history rendered "File not accessible" for files it had successfully
+sent, because it tested whether the recorded path still existed on disk. That
+path is not the user's file — it is a one-shot staging copy that the app deletes
+by design once the transfer ends.
+
+--------------------------------------------------------------------------------
+1.1 The picker hands back a cache copy, not the user's file
+--------------------------------------------------------------------------------
+$ sed -n '580,586p' lib/pages/send_preparation_page.dart   (BEFORE this change)
+    final result = await FilePicker.platform.pickFiles(allowMultiple: true);
+    final paths = result.files.map((f) => f.path!).toList();   // f.path = copy
+    ref.read(sendPreparationProvider.notifier).addFiles(paths);
+
+`file_picker` 9.2.3 copies each chosen file into the app cache and returns THAT
+path. Verified in the pub cache:
+
+$ sed -n '288,296p' ~/.pub-cache/hosted/pub.dev/file_picker-9.2.3/android/src/main/java/com/mr/flutter/plugin/filepicker/FileUtils.java
+    public static FileInfo openFileStream(final Context context, final Uri uri, boolean withData) {
+
+        Log.i(TAG, "Caching from URI: " + uri.toString());
+        FileOutputStream fos = null;
+        InputStream in = null;
+        final FileInfo.Builder fileInfo = new FileInfo.Builder();
+        final String fileName = FileUtils.getFileName(uri, context);
+        final String path = context.getCacheDir().getAbsolutePath() + "/file_picker/"+System.currentTimeMillis() +"/"+ (fileName != null ? fileName : "unamed");
+
+So the staged path is
+    <app cacheDir>/file_picker/<currentTimeMillis>/<fileName>
+
+--------------------------------------------------------------------------------
+1.2 The original reference IS available — and was never read
+--------------------------------------------------------------------------------
+The same plugin puts the original URI into a separate `identifier` field:
+
+$ sed -n '60,70p' .../file_picker/FileInfo.java
+    public HashMap<String, Object> toMap() {
+        final HashMap<String, Object> data = new HashMap<String, Object>();
+        data.put("path", path);
+        data.put("name", name);
+        data.put("size", size);
+        data.put("bytes", bytes);
+        data.put("identifier", uri.toString());     <-- the content:// URI
+        return data;
+    }
+
+It surfaces in Dart as PlatformFile.identifier:
+
+$ grep -n "identifier" .../file_picker-9.2.3/lib/src/platform_file.dart
+    22:      identifier: data['identifier'],
+    51:  /// The platform identifier for the original file, refers to an [Uri] on Android ...
+    57:  final String? identifier;
+
+The app never read it: `_pickFiles` mapped only `f.path`.
+
+--------------------------------------------------------------------------------
+1.3 The staging copy is deleted by design
+--------------------------------------------------------------------------------
+lib/services/android/send_cache.dart deletes staged copies once a transfer
+reaches a terminal state (documented in that file's own header comment: those
+copies are "pure staging", and prior to that cleanup a phone's cache could grow
+past 2.6 GB). The daemon only reads real filesystem paths, so staging is
+mandatory; the cleanup is deliberate and was NOT weakened by this change.
+
+Because file_picker's staging lives under the same app cache root, it is
+deleted along with everything else.
+
+--------------------------------------------------------------------------------
+1.4 History equated the two
+--------------------------------------------------------------------------------
+lib/widgets/file_tree_view.dart tested only `File(fullPath).existsSync()` and
+rendered the fixed string 'File not accessible' when false.
+
+================================================================================
+2. ORIGINAL REFERENCE PER ENTRY POINT (what I verified)
+================================================================================
+
+(a) File picker (send preparation page) — the reported path
+    Staged path : f.path, e.g. <cacheDir>/file_picker/<millis>/name
+    Original    : f.identifier, which on Android is `content://...`
+    Verified    : FileInfo.java:68 `data.put("identifier", uri.toString())`,
+                  surfaced as PlatformFile.identifier.
+
+(b) Share intent (ACTION_SEND / ACTION_SEND_MULTIPLE, PrivetShareChannel)
+    Staged path : the cache path PrivetShareChannel.copyFileToCache returns
+    Original    : the `content://` URI in Intent.EXTRA_STREAM / EXTRA_STREAM
+                  (plural) — i.e. the exact Uri object passed to copyFileToCache.
+    Verified    : the native side previously forwarded ONLY the cached paths and
+                  discarded the URIs, so the association was unrecoverable
+                  downstream. Fixed by forwarding `uris` alongside `paths`
+                  (index-aligned) and recording the pairing in Dart.
+    NOTE        : Android grants these one-shot read permissions. After a reboot
+                  or process restart checkContentUri may legitimately return
+                  false. History then says "not accessible" — which is TRUE: the
+                  app genuinely cannot read it any more. Scoped storage means we
+                  cannot resolve a real path instead, and no permission was
+                  added to change that (see section 6).
+
+(c) Clipboard import (ClipboardService) — NO mapping needed
+    The text is written to the user's configured saveDir, or to
+    getApplicationDocumentsDirectory() when unset (see _defaultTargetDir in
+    send_preparation_page.dart). Those are real user directories, not the app
+    cache, so the staged path IS the file's real location and `File.exists` is
+    the correct test. Verified by reading ClipboardService.saveToFile/uniqueFile
+    and _defaultTargetDir. Deliberately recorded as "original reference is the
+    real path itself".
+
+(d) SAF directory pick (ACTION_OPEN_DOCUMENT_TREE, PrivetFileChannel.pickDirectory)
+    The tree is copied recursively into <cache>/privet/send-cache/<session>/
+    preserving relative structure, and only the cached root is returned to Dart.
+    Per-file document URIs are computed natively (buildDocumentUriUsingTree) but
+    are NOT forwarded, so no per-file original reference is recoverable for
+    folder picks today. Such rows therefore fall into case (3) below and get the
+    honest "cleaned up" wording rather than a false "not accessible". Flagged as
+    a known limitation rather than silently ignored; extending it would require
+    the same index-aligned uri list already added for the share channel.
+
+(e) Desktop / Linux / Windows
+    No staging at all — the picker returns the user's real path, which is its own
+    original reference. File.exists remains correct.
+
+================================================================================
+3. THE FIX
+================================================================================
+
+New files:
+  lib/services/android/original_ref_store.dart
+      normalizeOriginalRef(): accepts content:// verbatim, unwraps file:// to a
+      real path, accepts a bare absolute path, rejects anything else.
+      OriginalRefStore: persistent staged-path -> original-reference map in
+      shared_preferences, so it survives app restarts (history is read long
+      after the transfer).
+
+  lib/services/file_availability.dart
+      FileAvailability { accessible, stagedCopyCleaned, inaccessible }
+      FileAvailabilityResolver.resolve({originalRef, stagedPath}) with injectable
+      probes (checkContentUri / fileExists / isCachePath) so the decision is
+      testable without a device.
+      stagedCopyCleanedMessage: "Temporary copy cleaned up after sending —
+      original file is fine".
+
+Capture points:
+  send_preparation_page.dart::_pickFiles  — records f.identifier per file.
+  shell_page.dart::_navigateToSendPreparation — pairs data.uris[i] with
+    data.paths[i] for share intents.
+  pending_share.dart — parses the new index-aligned `uris` list.
+
+Rendering:
+  file_tree_view.dart — FileTreeView takes an optional availabilityByPath map;
+    _FileNode renders three distinct states instead of one boolean.
+  history_page.dart — _HistoryFileTree resolves each leaf's original reference
+    before building the tree, then hands verdicts to FileTreeView. Verdict
+    resolution happens where the data is already asynchronous; the tree widget
+    stays synchronous.
+
+--------------------------------------------------------------------------------
+3.1 Judgement rules, in order
+--------------------------------------------------------------------------------
+1. Recorded original is content://  -> checkContentUri (openFileDescriptor "r").
+   Reachable => accessible (shows the size recorded in history).
+   Not reachable => inaccessible.
+2. Recorded original is a real path -> File.exists.
+3. No recorded original, recorded path is a cache staging path (SendCache
+   .isCachePath), and it is gone => stagedCopyCleaned. NEVER 'not accessible':
+   that would blame the user's file for the app's own cleanup.
+4. Otherwise -> unchanged existing behaviour.
+
+The size shown when accessible is `node.size`, i.e. the size from the transfer
+record — not a fresh stat of a copy that may not exist.
+
+--------------------------------------------------------------------------------
+3.2 Why the persistence key is the staged path
+--------------------------------------------------------------------------------
+The staged path is the ONLY identifier history has to match on: the app sends
+the staged path to the daemon verbatim and the engine records exactly what it
+was given as `absolute_path` (verified: dto.dart:563-573 parses
+relative_path/absolute_path/size/status, and SendFileEntry.path flows unmodified
+from addFiles into the send request).
+
+It is also unique per staging EVENT, which is what makes it a trustworthy key:
+  * file_picker stages into <cache>/file_picker/<currentTimeMillis>/<name>, so
+    every pick gets its own timestamped directory;
+  * our own SAF/share staging uses a monotonically increasing AtomicLong session.
+
+Consequences:
+  * Sending the same file twice yields two distinct staged paths and two
+    distinct entries; each history row resolves to the reference from its own
+    staging event. (Locked by test 7.)
+  * Content hash was deliberately NOT used as the key: two different files with
+    identical bytes would collide, which is exactly the case where history must
+    not attribute one file's reference to another.
+
+Entries are stored in one bounded map (512) with oldest-first eviction, so this
+mapping cannot grow without limit — the same reasoning that drives the send
+cache cleanup. Exceeding the bound only costs precision: such a row falls back
+to rule 3 and shows the honest wording.
+
+--------------------------------------------------------------------------------
+3.3 Existing (pre-fix) history rows
+--------------------------------------------------------------------------------
+A row written before this change has no original reference and none can be
+recovered: the staging path's content is gone and the URI was never recorded.
+These rows are handled by rule 3 — they now read "Temporary copy cleaned up
+after sending — original file is fine" instead of the false "File not
+accessible". No migration or data rewrite is performed, and none is possible for
+the reason above. This satisfies the user's report of one phone's history
+needing repair: the lie is corrected for every such row.
+
+================================================================================
+4. WHAT WAS DELIBERATELY NOT CHANGED
+================================================================================
+- No engine / IPC change. ../privet and ../privet-cli were NOT touched. Notably
+  dto.dart:563 calls _rejectUnknown(json, {...}), so adding an original_ref
+  field to the wire format would have required an engine change; the app-side
+  store avoids that entirely.
+- Send path unchanged: still sends from the staging copy.
+- Cache cleanup unchanged (still protects against the 2.6 GB growth).
+- No new permissions (section 6).
