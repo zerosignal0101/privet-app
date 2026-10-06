@@ -1,0 +1,22 @@
+00:00 +0: loading /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart
+00:00 +0: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +1: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +2: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +3: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +4: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +5: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +6: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +7: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +8: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +9: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +10: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +11: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +12: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +13: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +14: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resume_test.dart: a tree-rooted send whose tree is gone is re-staged as a whole tree and resumed with the ROOT as the override — one path, not N
+00:00 +15: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_revoked_test.dart: a revoked grant gives a specific reason and makes NO request
+00:00 +16: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_multifile_test.dart: a multi-file pick is not mistaken for a tree: its per-file paths are used, never the session directory
+00:00 +17: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_norefs_test.dart: no recorded tree reference → the per-file path still applies and reports reasons (keeps today's honest failure)
+00:00 +18: /home/zsig/Documents/gits/privet-app-wpr15/test/pages/history_tree_restage_resend_test.dart: a finished folder send re-opens the preparation page with ONE directory entry, not one entry per file
+00:01 +19: All tests passed!
+EXIT=0

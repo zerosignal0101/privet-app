@@ -1,0 +1,3 @@
+Analyzing privet-app-wpr15...                                   
+No issues found! (ran in 0.8s)
+ANALYZE_EXIT=0

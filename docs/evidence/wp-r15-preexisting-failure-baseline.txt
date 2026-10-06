@@ -1,0 +1,20 @@
+00:00 +0: loading /home/zsig/Documents/gits/privet-app-wpr15/test/services/daemon_supervisor_test.dart
+00:00 +0: attaches when a daemon is already reachable
+00:00 +1: spawns then polls until connect succeeds
+00:00 +2: gives up after connectAttempts
+00:00 +3: in-process spawner (null Process) polls until connect succeeds
+00:00 +4: in-process spawner with no daemon gives up
+00:01 +5: stop calls the stopHandler when there is no process
+00:01 +6: shutdownAttachedDaemon asks the daemon to stop over IPC
+00:01 +7: shutdownAttachedDaemon tolerates an unreachable daemon
+00:01 +8: resolvePosixEndpoint mirrors the daemon default (POSIX)
+00:01 +8 -1: resolvePosixEndpoint mirrors the daemon default (POSIX) [E]
+  Unsupported operation: Cannot modify unmodifiable map
+  dart:collection                                   _UnmodifiableMapMixin.[]=
+  test/services/daemon_supervisor_test.dart 180:25  main.<fn>
+  
+00:01 +8 -1: Some tests failed.
+
+Failing tests:
+  /home/zsig/Documents/gits/privet-app-wpr15/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)
+EXIT=1

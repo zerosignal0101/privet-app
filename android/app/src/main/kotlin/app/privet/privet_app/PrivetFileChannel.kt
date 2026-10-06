@@ -20,7 +20,8 @@ import java.util.concurrent.atomic.AtomicLong
  *   - copyContentUri(uri)     -> cached real path
  *   - openContentUri(uri)     -> launch system viewer
  *   - checkContentUri(uri)    -> permission still held?
- *   - pickDirectory()         -> ACTION_OPEN_DOCUMENT_TREE -> cached root path
+ *   - pickDirectory()         -> ACTION_OPEN_DOCUMENT_TREE -> {path, uri}
+ *   - stageDirectory(uri)     -> copy a previously picked tree again -> root path
  *   - pickFiles()             -> ACTION_OPEN_DOCUMENT (multi) -> [(path, uri)]
  *   - clearSendCache()        -> drop stale send-cache sessions
  *
@@ -44,6 +45,7 @@ class PrivetFileChannel(private val activity: Activity) {
                 "openContentUri" -> openContentUri(call.argument<String>("uri"), result)
                 "checkContentUri" -> checkContentUri(call.argument<String>("uri"), result)
                 "pickDirectory" -> pickDirectory(result)
+                "stageDirectory" -> stageDirectory(call.argument<String>("uri"), result)
                 "pickFiles" -> pickFiles(result)
                 "clearSendCache" -> clearSendCache(result)
                 else -> result.notImplemented()
@@ -75,10 +77,56 @@ class PrivetFileChannel(private val activity: Activity) {
                 activity.contentResolver.takePersistableUriPermission(
                     uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 val root = copyDirToCache(uri)
-                activity.runOnUiThread { pr?.success(root) }
+                // Return the tree URI next to the staged root, the way
+                // `pickFiles` returns (path, uri) pairs. Without it the pick is
+                // a one-shot: the staged copy is deleted with the send cache and
+                // nothing anywhere remembers which tree it came from, so an
+                // interrupted folder send can never be re-staged. The URI is the
+                // user's folder identity; the path is a disposable copy of it.
+                activity.runOnUiThread {
+                    pr?.success(
+                        mapOf(
+                            "path" to root,
+                            "uri" to uri.toString()
+                        ))
+                }
             } catch (e: Exception) {
                 Log.e("PrivetSAF", "pickDirectory error", e)
                 activity.runOnUiThread { pr?.error("SAF_ERROR", e.message, null) }
+            }
+        }.start()
+    }
+
+    /// Copies a *previously picked* tree again, from the persisted URI the
+    /// picker returned, into a fresh send-cache session.
+    ///
+    /// This is the re-stage half of the folder flow: the original pick's staging
+    /// copy is deleted when its transfer reaches a terminal state, so a send that
+    /// came from a folder has to be able to copy the user's tree in again rather
+    /// than resolve its files one at a time. It shares `copyDirToCache` with the
+    /// picker so there is exactly one traversal of a SAF tree in this class — a
+    /// second copy would be a second set of rules for relative paths, and a
+    /// folder send's whole value is that its hierarchy survives.
+    ///
+    /// No user interaction is involved: the grant is already persisted, so this
+    /// is a read-and-copy, not a picker.
+    private fun stageDirectory(uri: String?, result: MethodChannel.Result) {
+        if (uri == null) {
+            result.error("NO_URI", "uri required", null)
+            return
+        }
+        Thread {
+            try {
+                val root = copyDirToCache(Uri.parse(uri))
+                activity.runOnUiThread { result.success(root) }
+            } catch (e: Exception) {
+                // A revoked grant (SecurityException) or an unreadable tree must
+                // fail cleanly: the caller reports a specific reason and starts
+                // no transfer. Never a crash.
+                Log.e("PrivetSAF", "stageDirectory failed for $uri", e)
+                activity.runOnUiThread {
+                    result.error("STAGE_DIRECTORY_ERROR", e.message, null)
+                }
             }
         }.start()
     }
