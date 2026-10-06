@@ -57,4 +57,33 @@ void main() {
       expect(formatDialString('fe80::1', 47808), '[fe80::1]:47808');
     });
   });
+
+  group('hasExplicitPort', () {
+    test('is false when the port is left out', () {
+      // An omitted port means "whatever the daemon listens on", which is not the
+      // same instruction as a typed 47808: resolve must not be handed the
+      // literal as if the user had chosen it.
+      expect(hasExplicitPort('10.29.218.79'), isFalse);
+      expect(hasExplicitPort('  10.29.218.79  '), isFalse);
+      expect(hasExplicitPort('[fe80::1]'), isFalse);
+      // A bare IPv6 literal cannot carry a port: a trailing `:47808` is
+      // indistinguishable from part of the address.
+      expect(hasExplicitPort('fe80::1c2b:3d4e'), isFalse);
+      expect(hasExplicitPort('2001:db8::1'), isFalse);
+    });
+
+    test('is true when a port is written out', () {
+      expect(hasExplicitPort('10.29.218.79:47808'), isTrue);
+      expect(hasExplicitPort('10.29.218.79:1234'), isTrue);
+      expect(hasExplicitPort('[fe80::1]:47808'), isTrue);
+    });
+
+    test('is false for input that is not an address at all', () {
+      // Callers parse first, so this only has to avoid claiming a port on
+      // garbage; anything else would turn a typo into a dialled port.
+      expect(hasExplicitPort(''), isFalse);
+      expect(hasExplicitPort('landesk.local'), isFalse);
+      expect(hasExplicitPort('10.0.0.1:abc'), isFalse);
+    });
+  });
 }

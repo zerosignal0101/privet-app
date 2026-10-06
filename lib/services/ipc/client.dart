@@ -176,6 +176,21 @@ class PrivetIpcClient {
   Future<List<TrustedPeerDto>> listTrusted() async => ((await callRaw('list_trusted')) as List)
       .map((e) => TrustedPeerDto.fromJson(e as Map<String, dynamic>))
       .toList();
+  /// Dials [ip] and reports who answered there.
+  ///
+  /// An address does not name a device, so this is how one becomes an identity:
+  /// the daemon completes the same handshake pairing performs before it asks for
+  /// a code. [ip] is a bare address (as for [send]'s `via`); [quicPort]/[tcpPort]
+  /// are null unless the user typed a port, in which case the daemon uses those
+  /// instead of its own.
+  Future<ResolvedAddressDto> resolveAddress(String ip,
+          {int? quicPort, int? tcpPort}) async =>
+      ResolvedAddressDto.fromJson((await callRaw('resolve_address', {
+        'ip': ip,
+        'quic_port': quicPort,
+        'tcp_port': tcpPort,
+      })) as Map<String, dynamic>);
+
   Future<PairingCodeDto> generatePairingCode() async =>
       PairingCodeDto.fromJson((await callRaw('generate_pairing_code')) as Map<String, dynamic>);
   Future<PairingResultDto> pair({

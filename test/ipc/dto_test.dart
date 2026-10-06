@@ -34,6 +34,43 @@ void main() {
     expect(d.files.single.absolutePath, '/tmp/s/docs/a.txt');
   });
 
+  test('ResolvedAddressDto.fromJson reads a device that answered', () {
+    final r = ResolvedAddressDto.fromJson(jsonDecode('''
+      {"found":true,"device_fingerprint":"fp","device_name":"Pixel",
+       "trusted":true,"quic_port":47808,"tcp_port":47810}
+    ''') as Map<String, dynamic>);
+    expect(r.found, isTrue);
+    expect(r.trusted, isTrue);
+    expect(r.deviceFingerprint, 'fp');
+    expect(r.deviceName, 'Pixel');
+    expect(r.quicPort, 47808);
+    expect(r.tcpPort, 47810);
+  });
+
+  test('ResolvedAddressDto.fromJson reads nothing answering', () {
+    // The normal outcome for a typo or a device that is off: found is false and
+    // the identity fields are null, not absent. A parse that required them would
+    // turn "nobody is there" into a protocol error the UI cannot explain.
+    final r = ResolvedAddressDto.fromJson(jsonDecode('''
+      {"found":false,"device_fingerprint":null,"device_name":null,
+       "trusted":false,"quic_port":47808,"tcp_port":47808}
+    ''') as Map<String, dynamic>);
+    expect(r.found, isFalse);
+    expect(r.trusted, isFalse);
+    expect(r.deviceFingerprint, isNull);
+    expect(r.deviceName, isNull);
+  });
+
+  test('ResolvedAddressDto rejects an unknown field', () {
+    expect(
+      () => ResolvedAddressDto.fromJson(jsonDecode(
+              '{"found":true,"device_fingerprint":"fp","device_name":"n",'
+              '"trusted":true,"quic_port":47808,"tcp_port":47808,"surprise":1}')
+          as Map<String, dynamic>),
+      throwsA(isA<IpcProtocolException>()),
+    );
+  });
+
   test('unknown fields are rejected', () {
     expect(
       () => DaemonStatus.fromJson(jsonDecode(

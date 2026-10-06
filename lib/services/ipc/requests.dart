@@ -21,6 +21,22 @@ Map<String, dynamic> reqGetIdentity() => requestEnvelope('get_identity');
 Map<String, dynamic> reqListPeers() => requestEnvelope('list_peers');
 Map<String, dynamic> reqRefreshPeers() => requestEnvelope('refresh_peers');
 Map<String, dynamic> reqListTrusted() => requestEnvelope('list_trusted');
+/// `resolve_address`: dial [ip] and report who answers there.
+///
+/// [ip] is a bare address, exactly like `via` on a send — no port. The daemon
+/// dials its *own* listener ports when [quicPort]/[tcpPort] are null, which is
+/// what a peer built the same way answers on; pass them only when the user typed
+/// a port themselves.
+///
+/// This is how an address becomes a device: the daemon completes the identity
+/// handshake pairing performs before it asks for a code, so the answer says
+/// whether the device there is one this daemon already trusts.
+Map<String, dynamic> reqResolveAddress(String ip, {int? quicPort, int? tcpPort}) =>
+    requestEnvelope('resolve_address', {
+      'ip': ip,
+      'quic_port': quicPort,
+      'tcp_port': tcpPort,
+    });
 Map<String, dynamic> reqGeneratePairingCode() => requestEnvelope('generate_pairing_code');
 Map<String, dynamic> reqPair({
   String? fingerprint,

@@ -322,14 +322,17 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
   /// don't get through (AP client isolation). The address the other device's
   /// "This Machine" section copies is exactly what is accepted here.
   ///
-  /// The address is resolved against the trust store *before* any code is
-  /// requested. A device this daemon already trusts carries the addresses it has
-  /// been reached at — pairing records one, and every completed transfer
-  /// re-records one — so a typed address that matches means "send to a device I
-  /// already have", and asking it for another code would be friction this path
-  /// exists to remove. Pairing is entered only when the address belongs to no
-  /// trusted device, which is the one case where a code is the only way to learn
-  /// who is on the other end.
+  /// The address is dialled *before* any code is requested: the daemon completes
+  /// the same identity handshake pairing performs before it asks for a code, and
+  /// that is what says who is there. Matching the address against the addresses
+  /// remembered for known devices is not enough — a peer paired on one network
+  /// and met again on another sits at an address nothing local has ever
+  /// recorded, so a lookup finds nothing while the device is plainly reachable.
+  ///
+  /// A device that answers and is already trusted is sent to directly; a code is
+  /// asked for only when something answers that this daemon does not already
+  /// have, which is the one case where a code is the only way to learn who is on
+  /// the other end.
   Future<void> _sendByAddress(BuildContext context, WidgetRef ref) async {
     final result = await showDialog<({String? value, bool ok, String? error})>(
       context: context,
@@ -356,55 +359,68 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
       return;
     }
 
-    // Known address => this is a send, not a pairing. Two sources can identify
-    // the device: the addresses the trust store remembers (pairing records one,
-    // and every completed transfer re-records one), and the candidates a peer
-    // currently on the air is advertising. The second matters when a device is
-    // broadcasting an address we have not recorded yet — it is still a device we
-    // already have, so it is still not something to re-pair.
-    final trusted = await ref.read(trustedListProvider.future);
-    final trustedFingerprints = {
-      for (final peer in trusted) peer.deviceFingerprint,
-    };
-    final matches = <String>{
-      for (final peer in trusted)
-        if (peer.addresses.any((addr) => addr.ip == parsed.ip))
-          peer.deviceFingerprint,
-      for (final peer in ref.read(peerListProvider))
-        if (trustedFingerprints.contains(peer.deviceFingerprint) &&
-            peer.candidates.any((candidate) => candidate.ip == parsed.ip))
-          peer.deviceFingerprint,
-    };
-    if (matches.length == 1) {
-      final device = trusted.firstWhere(
-          (peer) => peer.deviceFingerprint == matches.single);
-      final notifier = ref.read(sendPreparationProvider.notifier);
-      notifier.setPeer(device.deviceFingerprint, name: device.deviceName);
-      notifier.setVia(parsed.ip);
-      if (mounted) {
-        _showSnackBar('${device.deviceName} is already paired — '
-            'sending to ${parsed.ip}');
-      }
+    // Ask the daemon who is at this address. Nothing local can answer it: the
+    // remembered addresses of a device paired elsewhere point at the network it
+    // was paired on, and a peer that is not on the air here is absent from the
+    // candidate list too. The handshake is the only thing that knows.
+    final service = ref.read(daemonStateProvider).service;
+    if (service == null) return;
+
+    // A port the user typed is an instruction; an omitted one is not. Leaving it
+    // null lets the daemon dial its own listener ports, which is what a peer
+    // built the same way answers on.
+    final typedPort = hasExplicitPort(address);
+    final ResolvedAddressDto resolved;
+    try {
+      resolved = await service.resolveAddress(
+        parsed.ip,
+        quicPort: typedPort ? parsed.port : null,
+        tcpPort: typedPort ? parsed.port : null,
+      );
+    } catch (e) {
+      if (mounted) _showSnackBar('Could not reach ${parsed.ip}: $e');
       return;
     }
-    if (matches.length > 1) {
-      // Two trusted devices matching one address: guessing could send to the
-      // wrong one, so say so and let the user pick from the list.
+
+    if (!resolved.found) {
+      // Not an error, and not a pairing: nothing is there to pair with either.
       if (mounted) {
-        _showSnackBar('${matches.length} paired devices match '
-            '${parsed.ip} — pick the one you mean from the list');
+        _showSnackBar('No device answered at ${parsed.ip}. Check the address, '
+            'and that the other device is running and reachable from here.');
       }
       return;
     }
 
-    final service = ref.read(daemonStateProvider).service;
-    if (service == null) return;
+    final notifier = ref.read(sendPreparationProvider.notifier);
+    if (resolved.trusted) {
+      final fingerprint = resolved.deviceFingerprint;
+      if (fingerprint == null) {
+        // Trust without an identity should not be possible; if it ever happens,
+        // inventing one is the last thing to do.
+        if (mounted) {
+          _showSnackBar('That address answered as trusted but reported no '
+              'device identity — not sending.');
+        }
+        return;
+      }
+      final name = resolved.deviceName ?? parsed.ip;
+      notifier.setPeer(fingerprint, name: name);
+      notifier.setVia(parsed.ip);
+      if (mounted) {
+        _showSnackBar('$name is already paired — sending to ${parsed.ip}');
+      }
+      return;
+    }
+
+    // Something is there, but it is not a device this one has: a code is the
+    // only way to learn who it is. The ports that just answered are the ones to
+    // pair on.
     final ok = await _enterTheirCode(
       title: 'Enter Pairing Code',
       onPair: (code) => service.pair(
           ip: parsed.ip,
-          quicPort: parsed.port,
-          tcpPort: parsed.port,
+          quicPort: resolved.quicPort,
+          tcpPort: resolved.tcpPort,
           code: code),
     );
     if (ok && mounted) _showSnackBar('Paired with ${parsed.ip}');
@@ -803,8 +819,17 @@ class _ViaAddressSectionState extends State<_ViaAddressSection> {
     }
   }
 
-  /// Seeds the box from the device's newest remembered address, once per
-  /// recipient.
+  /// Seeds the box once per recipient.
+  ///
+  /// Two sources, in this order of authority:
+  ///
+  ///  * a `via` that is already set — the user typed an address in the
+  ///    send-by-address flow, and that is the address they mean. It must win over
+  ///    whatever the trust store remembers, because the whole point of typing one
+  ///    is that the remembered address is wrong (a device met again on another
+  ///    network). Letting the prefill overwrite it would silently send to the old
+  ///    address, which is the failure this box is here to avoid.
+  ///  * otherwise the device's newest remembered address.
   ///
   /// The provider write is deferred to a post-frame callback on purpose:
   /// `onChanged` mutates [sendPreparationProvider], and Riverpod forbids
@@ -815,6 +840,16 @@ class _ViaAddressSectionState extends State<_ViaAddressSection> {
   /// not overwrite what they typed or clear their edit.
   void _schedulePrefill() {
     if (_prefilled) return;
+
+    // Already decided: show it, and leave the provider alone — it was the thing
+    // that set the value.
+    final chosen = widget.viaIp;
+    if (chosen != null) {
+      _prefilled = true;
+      _controller.text = chosen;
+      return;
+    }
+
     final latest = widget.remembered.isEmpty ? null : widget.remembered.first;
     if (latest == null) return;
     _prefilled = true;

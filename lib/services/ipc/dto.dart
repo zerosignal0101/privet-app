@@ -404,6 +404,67 @@ class TrustedPeerDto {
       };
 }
 
+/// Who answered at an address the user dialled (`resolve_address`).
+///
+/// The daemon dials the address and completes the identity handshake — the same
+/// exchange pairing performs *before* it asks for a code — so this is how an
+/// address becomes a device. [trusted] is what lets the send flow skip the code:
+/// when the device there is one this daemon already has, nothing is left to
+/// prove.
+class ResolvedAddressDto {
+  ResolvedAddressDto({
+    required this.found,
+    required this.deviceFingerprint,
+    required this.deviceName,
+    required this.trusted,
+    required this.quicPort,
+    required this.tcpPort,
+  });
+
+  factory ResolvedAddressDto.fromJson(Map<String, dynamic> json) {
+    _rejectUnknown(json, {
+      'found',
+      'device_fingerprint',
+      'device_name',
+      'trusted',
+      'quic_port',
+      'tcp_port',
+    });
+    return ResolvedAddressDto(
+      found: _requireBool(json, 'found'),
+      deviceFingerprint: _optString(json, 'device_fingerprint'),
+      deviceName: _optString(json, 'device_name'),
+      trusted: _requireBool(json, 'trusted'),
+      quicPort: _requireInt(json, 'quic_port'),
+      tcpPort: _requireInt(json, 'tcp_port'),
+    );
+  }
+
+  /// False when nothing answered; the other fields are then meaningless.
+  final bool found;
+
+  /// The identity that answered, null exactly when [found] is false.
+  final String? deviceFingerprint;
+  final String? deviceName;
+
+  /// True when the answering device is in the trust store as Trusted, so no
+  /// pairing is needed to send to it.
+  final bool trusted;
+
+  /// The ports the daemon dialled, so the caller can reuse them verbatim.
+  final int quicPort;
+  final int tcpPort;
+
+  Map<String, dynamic> toJson() => {
+        'found': found,
+        'device_fingerprint': deviceFingerprint,
+        'device_name': deviceName,
+        'trusted': trusted,
+        'quic_port': quicPort,
+        'tcp_port': tcpPort,
+      };
+}
+
 class TransferSummaryDto {
   TransferSummaryDto({
     required this.transferId,

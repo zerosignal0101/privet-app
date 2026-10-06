@@ -62,6 +62,18 @@ String formatDialString(String ip, int port) =>
   return _parseIpv4WithPort(s, defaultPort);
 }
 
+/// Whether [address] carries a port rather than relying on the default.
+///
+/// [parseDialString] folds both cases into one `(ip, port)` pair, which is right
+/// for dialling but not for `resolve`: an omitted port means "whatever this
+/// daemon listens on" — what a peer built the same way answers on — while a
+/// typed one is an instruction to use it. Probed with a sentinel rather than
+/// re-deriving the bracket/colon rules here, so the two cannot drift apart.
+bool hasExplicitPort(String address) {
+  final parsed = parseDialString(address, defaultPort: 0);
+  return parsed != null && parsed.port != 0;
+}
+
 ({String ip, int port})? _parseIpv4WithPort(String s, int defaultPort) {
   final colon = s.indexOf(':');
   if (colon < 0) return (ip: s, port: defaultPort);
