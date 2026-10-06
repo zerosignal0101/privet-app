@@ -50,6 +50,13 @@ Future<DaemonSupervisor> _fakeSupervisor() async {
                 'latest': 0,
               })));
           break;
+        // The page asks for the peer list on entry, because its reachability
+        // verdict reads the same discovery input the home page does. Answering
+        // it is required, not optional: an unanswered request would leave the
+        // IPC timeout timer pending and fail this test for the wrong reason.
+        case 'list_peers':
+          replies.add(_resp(id as String, _payload('peers', <Map<String, dynamic>>[])));
+          break;
         case 'list_trusted':
           replies.add(_resp(id as String, _payload('trusted', paired
               ? [

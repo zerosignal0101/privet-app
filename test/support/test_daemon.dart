@@ -117,12 +117,38 @@ List<Map<String, dynamic>> Function(List<Map<String, dynamic>>) scriptFromHandle
           case 'subscribe_events':
             return okResponse(id, 'event_replay',
                 {'events': <dynamic>[], 'oldest_available': null, 'latest': 0});
+          // "Nothing is discovered" is the neutral answer for a test that is not
+          // about discovery, and it is what an isolated daemon reports anyway.
+          // The send page asks for the peer list on entry (it needs the same
+          // discovery input the home page's reachability verdict reads), so
+          // without this every send-page test would fail on an unhandled
+          // request rather than on the behaviour it is actually about. Tests
+          // that care put their own `list_peers` in [handlers], which wins
+          // above.
+          case 'list_peers':
+            return okResponse(id, 'peers', <dynamic>[]);
         }
         throw StateError('unexpected method: $method');
       }).toList();
 }
 
 // ---- trusted-peer fixtures (list_trusted) ---------------------------------
+
+/// A `resolve_address` response for an address nothing answers at.
+///
+/// The neutral answer for a test that is not about reachability but whose peer
+/// has a remembered address: the send page asks that address once on entry, and
+/// "nobody is there" is the outcome that changes nothing else about such a test.
+/// Tests that care which device answered script their own `resolve_address`.
+Map<String, dynamic> resolveNotFoundResponse(String id) =>
+    okResponse(id, 'resolved_address', {
+      'found': false,
+      'device_fingerprint': null,
+      'device_name': null,
+      'trusted': false,
+      'quic_port': 47808,
+      'tcp_port': 47808,
+    });
 
 /// One `addresses` entry on a `list_trusted` record.
 Map<String, dynamic> trustedPeerAddress(

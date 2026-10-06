@@ -80,6 +80,11 @@ Future<_Rig> _boot({
           trustedPeer(_fpA, name: 'alpha', addresses: aAddresses),
           trustedPeer(_fpB, name: 'bravo', addresses: bAddresses),
         ]),
+    // The page probes the selected receiver's remembered address once on entry,
+    // because its reachability verdict reads the same input the home page does.
+    // These tests are about which address belongs to which receiver, not about
+    // whether that address answers, so "nobody is there" is the neutral answer.
+    'resolve_address': (id, _) => resolveNotFoundResponse(id),
     'send': (id, params) {
       sends.add(Map<String, dynamic>.from(params));
       return okResponse(

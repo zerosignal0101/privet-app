@@ -1,0 +1,125 @@
+00:00 +0: loading /home/zsig/Documents/gits/privet-app-wpr16/test/pages/send_page_reachability_test.dart
+00:00 +0: a discovered device is not offline, is not probed, and is sent to without an address
+00:01 +1: a device reachable at a remembered address is NOT offline, and the send carries that address as via
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: no matching candidates
+  Actual: _TextContainingWidgetFinder:<Found 1 widget with text containing offline: [
+            Text("Z690 has not been heard from and no address is remembered, so there is nothing to
+send to yet. That is not the same as being offline — enter its address to send without discovery, or
+choose another recipient.", inherit: true, color: MaterialColor(primary value: Color(alpha: 1.0000,
+red: 0.6196, green: 0.6196, blue: 0.6196, colorSpace: ColorSpace.sRGB)), size: 12.0, dependencies:
+[DefaultSelectionStyle, DefaultTextStyle, MediaQuery]),
+          ]>
+   Which: means one was found but none were expected
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///home/zsig/Documents/gits/privet-app-wpr16/test/pages/send_page_reachability_test.dart:205:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///home/zsig/Documents/gits/privet-app-wpr16/test/pages/send_page_reachability_test.dart line 205
+The test description was:
+  a device reachable at a remembered address is NOT offline, and the send carries that address as
+  via
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:02 +1 -1: a device reachable at a remembered address is NOT offline, and the send carries that address as via [E]
+  Test failed. See exception logs above.
+  The test description was: a device reachable at a remembered address is NOT offline, and the send carries that address as via
+  
+00:02 +1 -1: a genuinely unreachable device is blocked, and the message says which address was tried
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: exactly one matching candidate
+  Actual: _TextContainingWidgetFinder:<Found 0 widgets with text containing No answer at
+10.29.218.79: []>
+   Which: means none were found but one was expected
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///home/zsig/Documents/gits/privet-app-wpr16/test/pages/send_page_reachability_test.dart:240:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///home/zsig/Documents/gits/privet-app-wpr16/test/pages/send_page_reachability_test.dart line 240
+The test description was:
+  a genuinely unreachable device is blocked, and the message says which address was tried
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:02 +1 -2: a genuinely unreachable device is blocked, and the message says which address was tried [E]
+  Test failed. See exception logs above.
+  The test description was: a genuinely unreachable device is blocked, and the message says which address was tried
+  
+00:02 +1 -2: the pinned address still overrides an unanswered probe
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: exactly one matching candidate
+  Actual: _TextContainingWidgetFinder:<Found 0 widgets with text containing No answer at
+10.29.218.79: []>
+   Which: means none were found but one was expected
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///home/zsig/Documents/gits/privet-app-wpr16/test/pages/send_page_reachability_test.dart:275:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///home/zsig/Documents/gits/privet-app-wpr16/test/pages/send_page_reachability_test.dart line 275
+The test description was:
+  the pinned address still overrides an unanswered probe
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:03 +1 -3: the pinned address still overrides an unanswered probe [E]
+  Test failed. See exception logs above.
+  The test description was: the pinned address still overrides an unanswered probe
+  
+00:03 +1 -3: a device with no address and nothing probed is not called offline, and the send is blocked for the real reason
+00:03 +2 -3: the page probes a remembered address exactly once, and never polls
+00:03 +3 -3: an address that answers as a DIFFERENT device is not treated as this device
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: exactly one matching candidate
+  Actual: _TextContainingWidgetFinder:<Found 0 widgets with text containing No answer at
+10.29.218.79: []>
+   Which: means none were found but one was expected
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///home/zsig/Documents/gits/privet-app-wpr16/test/pages/send_page_reachability_test.dart:365:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///home/zsig/Documents/gits/privet-app-wpr16/test/pages/send_page_reachability_test.dart line 365
+The test description was:
+  an address that answers as a DIFFERENT device is not treated as this device
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:03 +3 -4: an address that answers as a DIFFERENT device is not treated as this device [E]
+  Test failed. See exception logs above.
+  The test description was: an address that answers as a DIFFERENT device is not treated as this device
+  
+00:03 +3 -4: Some tests failed.
+
+Failing tests:
+  /home/zsig/Documents/gits/privet-app-wpr16/test/pages/send_page_reachability_test.dart: a device reachable at a remembered address is NOT offline, and the send carries that address as via
+  /home/zsig/Documents/gits/privet-app-wpr16/test/pages/send_page_reachability_test.dart: a genuinely unreachable device is blocked, and the message says which address was tried
+  /home/zsig/Documents/gits/privet-app-wpr16/test/pages/send_page_reachability_test.dart: an address that answers as a DIFFERENT device is not treated as this device
+  /home/zsig/Documents/gits/privet-app-wpr16/test/pages/send_page_reachability_test.dart: the pinned address still overrides an unanswered probe

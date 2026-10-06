@@ -189,6 +189,78 @@ class ReachabilityResult {
   final String? probedFingerprint;
 }
 
+// ---------------------------------------------------------------------------
+// The one verdict
+// ---------------------------------------------------------------------------
+
+/// The single answer to "can this device be reached right now", for one
+/// fingerprint.
+///
+/// Both pages that can name a device — Home's Known Devices rows and the Send
+/// Files page — must read *this* and nothing else. They used to ask different
+/// questions: Home looked at discovery *and* the address probe, while the send
+/// page looked at discovery alone, so a device that Home had just proved
+/// reachable at a remembered address was called "offline" one tap later, and
+/// the send was gated on that verdict. The user got two different answers about
+/// one device at one moment, and the one that blocked was the wrong one.
+///
+/// The rule, in one place:
+///
+///  * a device that is broadcasting is [TrustedReachability.online] — discovery
+///    outranks a probe, because a beacon needs no address and the remembered
+///    address may well be stale;
+///  * otherwise the last probe's verdict stands, and no probe at all is
+///    [TrustedReachability.unknown] — which is *not* the same as unreachable and
+///    must never be rendered as "offline".
+class PeerReachVerdict {
+  const PeerReachVerdict({required this.state, this.address});
+
+  final TrustedReachability state;
+
+  /// The address that was probed, when one was. For a [TrustedReachability
+  /// reachable] device this is the address that answered, so it is the address
+  /// a send can be addressed to.
+  final String? address;
+
+  /// Whether a send to this device can be handed to the daemon as-is.
+  bool get canSend => state.canSend;
+
+  /// True only when a probe actually asked and did not get this device back —
+  /// the single state that legitimately means "this device is not there".
+  bool get isUnreachable => state == TrustedReachability.unreachable;
+
+  /// True when nothing has been learned about the address yet. Deliberately not
+  /// folded into "offline": "we have not asked" and "we asked and it is gone"
+  /// are different facts and the UI must not merge them.
+  bool get isUnchecked => state == TrustedReachability.unknown;
+}
+
+/// Composes [PeerReachVerdict] for [fingerprint] out of the two raw inputs.
+PeerReachVerdict peerVerdictFor({
+  required Map<String, ReachabilityResult> reachability,
+  required Set<String> onlineFingerprints,
+  required String fingerprint,
+}) {
+  final probe = reachability[fingerprint] ?? unknownReachability;
+  if (onlineFingerprints.contains(fingerprint)) {
+    // Discovery outranks a probe. The address is still reported, but callers
+    // must not treat it as the route for a device that is on the air.
+    return PeerReachVerdict(state: TrustedReachability.online, address: probe.address);
+  }
+  return PeerReachVerdict(state: probe.state, address: probe.address);
+}
+
+/// [peerVerdictFor] as a provider, so a page reads the composed answer without
+/// having to remember the precedence rule itself.
+final peerReachVerdictProvider =
+    Provider.family<PeerReachVerdict, String>((ref, fingerprint) {
+  return peerVerdictFor(
+    reachability: ref.watch(reachabilityProvider),
+    onlineFingerprints: ref.watch(onlinePeerFingerprintsProvider),
+    fingerprint: fingerprint,
+  );
+});
+
 /// Reachability of the trusted devices, probed on explicit user refresh only.
 ///
 /// Discovery alone leaves a device that is not on the air looking permanently
@@ -206,12 +278,62 @@ final reachabilityProvider =
         ReachabilityNotifier.new);
 
 class ReachabilityNotifier extends Notifier<Map<String, ReachabilityResult>> {
-  /// Guards against a stale probe writing over a newer refresh's results, and
-  /// against touching state after the container is gone.
-  int _generation = 0;
+  /// Per-fingerprint probe tokens, bumped every time a probe starts for that
+  /// device. A probe may only write its verdict while it still owns the token
+  /// for that device, which is what stops a slow, stale probe from overwriting a
+  /// newer answer.
+  ///
+  /// Per device rather than one counter for the whole map on purpose: a
+  /// one-shot probe (from the send page) must not invalidate the verdicts of
+  /// devices a refresh is probing at the same time, or those rows would sit on
+  /// "probing" forever with nothing left to finish them.
+  final Map<String, int> _tokens = {};
+
+  /// Claims the next token for [fingerprint], invalidating any probe of that
+  /// device that is still in flight.
+  int _claim(String fingerprint) {
+    final next = (_tokens[fingerprint] ?? 0) + 1;
+    _tokens[fingerprint] = next;
+    return next;
+  }
 
   @override
   Map<String, ReachabilityResult> build() => const {};
+
+  /// Probes one device at its remembered address, if there is a reason to and
+  /// an address to dial.
+  ///
+  /// This is the Send Files page's whole mechanism for learning about the
+  /// device it was opened with: the page is entered with a recipient, and
+  /// asking one bounded question about that recipient is what lets it answer
+  /// honestly instead of guessing "offline" from silence. It is a single
+  /// request bounded by [kReachabilityProbeTimeout] — no timer, no polling
+  /// loop, nothing to clean up — and it writes into the same
+  /// [reachabilityProvider] the home page reads, so the two pages cannot drift
+  /// apart again.
+  ///
+  /// Does nothing when the device is broadcasting (discovery already answered),
+  /// when it has no remembered address (nothing to dial), or when this session
+  /// already has a verdict for it.
+  Future<void> probePeer(TrustedPeerDto peer, {required bool isOnline}) async {
+    if (isOnline) return;
+    if (peer.addresses.isEmpty) return;
+    if (state.containsKey(peer.deviceFingerprint)) return;
+
+    final service = ref.read(daemonStateProvider).service;
+    if (service == null) return;
+
+    final address = peer.addresses.first;
+    final token = _claim(peer.deviceFingerprint);
+    state = {
+      ...state,
+      peer.deviceFingerprint: ReachabilityResult(
+        state: TrustedReachability.probing,
+        address: address.ip,
+      ),
+    };
+    await _probe(service, peer.deviceFingerprint, address, token);
+  }
 
   /// Probes every trusted device in [trusted] that is neither currently
   /// broadcasting ([online]) nor without a remembered address, all at once.
@@ -241,7 +363,11 @@ class ReachabilityNotifier extends Notifier<Map<String, ReachabilityResult>> {
       return;
     }
 
-    final generation = ++_generation;
+    // Each device claims its own token, so this refresh and a one-shot send
+    // page probe of a *different* device do not evict each other.
+    final tokens = <String, int>{
+      for (final t in targets) t.peer.deviceFingerprint: _claim(t.peer.deviceFingerprint),
+    };
     state = {
       for (final t in targets)
         t.peer.deviceFingerprint: ReachabilityResult(
@@ -252,20 +378,21 @@ class ReachabilityNotifier extends Notifier<Map<String, ReachabilityResult>> {
 
     await Future.wait([
       for (final t in targets)
-        _probe(service, t.peer.deviceFingerprint, t.address, generation),
+        _probe(service, t.peer.deviceFingerprint, t.address,
+            tokens[t.peer.deviceFingerprint]!),
     ]);
 
-    // A newer refresh started while these were in flight: its results are the
-    // ones on screen, so drop these on the floor rather than overwrite them.
-    if (generation != _generation) return;
-
     // Recompute reachability from whatever the individual probes recorded, so
-    // one device's slow answer cannot clobber another's already-known result.
+    // one device's slow answer cannot clobber another's already-known result —
+    // and drop any device a newer probe has taken over in the meantime, whose
+    // probe owns the token now.
     final results = <String, ReachabilityResult>{};
     for (final t in targets) {
-      final pending = state[t.peer.deviceFingerprint];
+      final fingerprint = t.peer.deviceFingerprint;
+      if (_tokens[fingerprint] != tokens[fingerprint]) continue;
+      final pending = state[fingerprint];
       if (pending == null) continue;
-      results[t.peer.deviceFingerprint] = pending.state == TrustedReachability.probing
+      results[fingerprint] = pending.state == TrustedReachability.probing
           // Nothing wrote a verdict for this one: it fell through the timeout
           // path below without recording a result.
           ? ReachabilityResult(
@@ -281,7 +408,7 @@ class ReachabilityNotifier extends Notifier<Map<String, ReachabilityResult>> {
     PrivetService service,
     String fingerprint,
     TrustedPeerAddressDto address,
-    int generation,
+    int token,
   ) async {
     TrustedReachability outcome;
     String? answered;
@@ -309,9 +436,9 @@ class ReachabilityNotifier extends Notifier<Map<String, ReachabilityResult>> {
       outcome = TrustedReachability.unreachable;
     }
 
-    // A newer refresh may own the state now; writing then would resurrect a
-    // stale verdict.
-    if (_generation != generation) return;
+    // A newer probe of this device may own the state now; writing then would
+    // resurrect a stale verdict.
+    if (_tokens[fingerprint] != token) return;
     final current = state[fingerprint];
     if (current == null) return; // the device left the trusted list mid-probe
     state = {

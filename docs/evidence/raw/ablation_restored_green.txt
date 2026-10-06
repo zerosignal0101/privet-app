@@ -1,0 +1,9 @@
+00:00 +0: loading /home/zsig/Documents/gits/privet-app-wpr16/test/pages/send_page_reachability_test.dart
+00:00 +0: a discovered device is not offline, is not probed, and is sent to without an address
+00:01 +1: a device reachable at a remembered address is NOT offline, and the send carries that address as via
+00:02 +2: a genuinely unreachable device is blocked, and the message says which address was tried
+00:02 +3: the pinned address still overrides an unanswered probe
+00:02 +4: a device with no address and nothing probed is not called offline, and the send is blocked for the real reason
+00:03 +5: the page probes a remembered address exactly once, and never polls
+00:03 +6: an address that answers as a DIFFERENT device is not treated as this device
+00:03 +7: All tests passed!
