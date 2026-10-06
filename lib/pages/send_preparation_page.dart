@@ -11,6 +11,7 @@ import '../providers/peers.dart';
 import '../providers/send_preparation.dart';
 import '../providers/settings.dart';
 import '../services/android/content_uri_dir_helper.dart';
+import '../services/android/content_uri_file_picker.dart';
 import '../services/android/original_ref_store.dart';
 import '../services/clipboard_service.dart';
 import '../services/ipc/dto.dart';
@@ -594,6 +595,18 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
   }
 
   Future<void> _pickFiles(WidgetRef ref) async {
+    if (Platform.isAndroid) {
+      // Use our own SAF multi-select picker rather than `file_picker`: it asks
+      // for a persistable read grant and takes it per URI, so the `content://`
+      // reference history records survives an app or device restart. Without
+      // that grant the URI stops being readable once the process dies and
+      // history would report the user's file as inaccessible again.
+      final paths = await ContentUriFilePicker.pickAndRecord();
+      if (paths.isNotEmpty) {
+        ref.read(sendPreparationProvider.notifier).addFiles(paths);
+      }
+      return;
+    }
     final result = await FilePicker.platform.pickFiles(allowMultiple: true);
     if (result != null && result.files.isNotEmpty) {
       final paths = <String>[];

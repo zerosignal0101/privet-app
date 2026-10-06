@@ -1,0 +1,21 @@
+WP-R7 — flutter analyze + release build evidence
+==============================================
+
+$ flutter analyze
+Analyzing privet-app-wpr6...                                    
+No issues found! (ran in 1.1s)
+
+$ flutter build apk --release
+Upgrading analysis_options.yaml to exclude build and platform directories.
+Running Gradle task 'assembleRelease'...                        
+Picked up JAVA_TOOL_OPTIONS: -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=4568 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=4568 -Dhttp.nonProxyHosts=localhost|127.0.0.1|10.*|172.16.*|192.168.*
+Font asset "MaterialIcons-Regular.otf" was tree-shaken, reducing it from 1645184 to 8564 bytes (99.5% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
+Running Gradle task 'assembleRelease'...                           23.5s
+✓ Built build/app/outputs/flutter-apk/app-release.apk (76.2MB)
+
+$ sha256sum build/app/outputs/flutter-apk/app-release.apk
+9e0b1cedaf7ddb1cd8bd7733dee95d4c2528bed92cffcaa2e0e4923f7b1b42dd  build/app/outputs/flutter-apk/app-release.apk
+
+NOTE: 'Upgrading analysis_options.yaml to exclude build and platform directories.'
+is the Flutter tool rewriting that file; it was reverted with
+'git checkout -- analysis_options.yaml pubspec.lock' and is not part of this change.

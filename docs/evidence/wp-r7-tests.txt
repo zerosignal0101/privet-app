@@ -1,0 +1,60 @@
+WP-R7 — persistable URI grants for picked files — test evidence
+==============================================================
+
+New test file: test/services/android/content_uri_file_picker_test.dart
+  1. a picked (staging path, URI) pair is recorded per file, and what gets recorded is the URI — not the cache path
+  2. a 3-file multi-select records all three, index-aligned with the selection order
+  3. a cancelled pick records nothing and does not throw
+  4a. one entry the native side could not stage is skipped and the rest are still recorded
+  4b. an entry with an unusable reference still sends, and the others keep theirs
+  5. a malformed reply is parsed defensively instead of throwing
+  6. off Android the picker is a no-op rather than an error
+
+R6 regression suite: test/services/android/history_availability_test.dart (7 tests, file unchanged by this work)
+
+$ flutter test test/services/android/content_uri_file_picker_test.dart \
+      test/services/android/history_availability_test.dart
+
+Upgrading analysis_options.yaml to exclude build and platform directories.
+00:00 +0: loading /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/content_uri_file_picker_test.dart
+00:00 +0: /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/content_uri_file_picker_test.dart: 1. a picked (staging path, URI) pair is recorded per file, and what gets recorded is the URI — not the cache path
+00:00 +1: /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/content_uri_file_picker_test.dart: 2. a 3-file multi-select records all three, index-aligned with the selection order
+00:00 +2: /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/content_uri_file_picker_test.dart: 3. a cancelled pick records nothing and does not throw
+[SAF] pickFiles error: PlatformException(SAF_ERROR, no activity, null, null)
+00:00 +3: /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/content_uri_file_picker_test.dart: 4a. one entry the native side could not stage is skipped and the rest are still recorded
+00:00 +4: /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/content_uri_file_picker_test.dart: 4b. an entry with an unusable reference still sends, and the others keep theirs
+[SAF] unusable original reference, sending anyway: relative/not-a-reference
+00:00 +5: /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/content_uri_file_picker_test.dart: 5. a malformed reply is parsed defensively instead of throwing
+00:00 +6: /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/content_uri_file_picker_test.dart: 6. off Android the picker is a no-op rather than an error
+00:00 +7: /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/history_availability_test.dart: 1. picker result (staged copy + content URI) is judged by URI reachability
+00:00 +8: /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/history_availability_test.dart: 2. staged copy already cleaned but the original URI is still reachable (core regression)
+00:00 +9: /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/history_availability_test.dart: 3. an original reference that is a real path is judged by File.exists
+00:00 +10: /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/history_availability_test.dart: 4. no original reference + a cleaned staging path must never claim the user's file is inaccessible
+00:00 +11: /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/history_availability_test.dart: 5. no reference, path is not a staging copy, and it is missing: unchanged behaviour
+00:00 +12: /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/history_availability_test.dart: 6. a throwing or unreachable content URI is treated as unreachable
+00:00 +13: /home/zsig/Documents/gits/privet-app-wpr6/test/services/android/history_availability_test.dart: 7. regression: the staged copy is never treated as the file's identity
+00:00 +14: All tests passed!
+
+--- Full suite tail (only the one known pre-existing failure) ---
+
+$ flutter test
+
+00:08 +232 -1: /home/zsig/Documents/gits/privet-app-wpr6/test/ipc/client_test.dart: connect performs status and replay; dedupes events
+00:08 +233 -1: /home/zsig/Documents/gits/privet-app-wpr6/test/ipc/client_test.dart: call surfaces daemon errors as PrivetIpcException
+00:08 +234 -1: Some tests failed.
+
+Failing tests:
+  /home/zsig/Documents/gits/privet-app-wpr6/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)
+
+--- Proof the failing test predates this work: WP-R7 changes stashed ---
+$ git stash push -- lib/pages/send_preparation_page.dart android/app/src/main/kotlin/app/privet/privet_app/PrivetFileChannel.kt
+$ flutter test test/services/daemon_supervisor_test.dart
+
+  
+00:01 +8 -1: Some tests failed.
+
+Failing tests:
+  /home/zsig/Documents/gits/privet-app-wpr6/test/services/daemon_supervisor_test.dart: resolvePosixEndpoint mirrors the daemon default (POSIX)
+
+=> The POSIX endpoint failure occurs identically WITHOUT the WP-R7 changes.
+   It is out of scope here and was not touched.
