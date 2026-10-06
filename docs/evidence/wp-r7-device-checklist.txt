@@ -1,0 +1,84 @@
+WP-R7 — manifest proof (zero permission changes) + device acceptance checklist
+===========================================================================
+
+PART 1 — NO PERMISSION WAS ADDED
+-------------------------------
+A persistable URI grant is a runtime SAF grant held by the app; it needs no
+manifest permission. The manifest is byte-identical to main.
+
+$ git diff main...HEAD -- android/app/src/main/AndroidManifest.xml
+[no output — the file is unchanged]
+
+$ git diff main...HEAD --stat -- android/app/src/main/AndroidManifest.xml
+[no output — zero files changed]
+
+$ grep -n 'permission' android/app/src/main/AndroidManifest.xml
+3:    <uses-permission android:name="android.permission.INTERNET"/>
+4:    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+5:    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+6:    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
+8:    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+9:    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+10:    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+All seven lines above are pre-existing network/foreground-service
+permissions. None was added by WP-R7, and none of them is storage-related:
+the file is reached through the SAF grant, not through a storage permission.
+
+Every file changed by this work (WP-R7 branch vs main, including this file):
+
+ .../app/privet/privet_app/PrivetFileChannel.kt     | 137 +++++++++++++--
+ docs/evidence/wp-r7-build-and-analyze.txt          |  21 +++
+ docs/evidence/wp-r7-device-checklist.txt           |  82 +++++++++
+ docs/evidence/wp-r7-tests.txt                      |  60 +++++++
+ lib/pages/send_preparation_page.dart               |  13 ++
+ lib/services/android/content_uri_file_picker.dart  | 116 +++++++++++++
+ .../android/content_uri_file_picker_test.dart      | 186 +++++++++++++++++++++
+ 7 files changed, 605 insertions(+), 10 deletions(-)
+
+PART 2 — MANUAL DEVICE ACCEPTANCE (the decisive proof)
+---------------------------------------------------
+The persistable grant is enforced by the Android framework, so 'does the
+original reference survive a restart' cannot be answered by a host-side
+unit test. It must be run on a device, by a human, after the unified build.
+
+Performed by: the requester (who owns the final build + adb install).
+Not performed by this task — 'adb install' was explicitly out of scope.
+
+Setup
+  1. Install the release APK built from this branch (commit fde4cd5):
+       flutter build apk --release && adb install -r build/app/outputs/flutter-apk/app-release.apk
+  2. Put one known, non-trivial file on the device, e.g.
+       adb push /path/to/check.txt /sdcard/Download/r7-check.txt
+     and note its exact size (e.g. 'stat -c %s' locally).
+
+Steps
+  3. Open the app -> Send Files -> Add files.
+  4. Pick r7-check.txt (single selection is enough; optionally pick 3 files
+     to exercise the multi-select path). Finish the send to a paired peer.
+  5. Confirm the file appears in History as sent.
+
+  >>> THE DECISIVE STEP: kill the app process, then reopen it. <<<
+  6. Kill the process WITHOUT uninstalling or clearing storage:
+       adb shell am force-stop app.privet.privet_app
+     (or use Settings -> Apps -> Force stop). This is the same effect as a
+     swipe-away; it ends the process that holds the old one-shot grant.
+  7. Reopen the app from the launcher. Go to History.
+  8. EXPECTED: the file is shown as reachable/accessible AND carries its size
+     — not 'File not accessible', and not the 'staging copy was cleaned'
+     wording.
+
+  Optional, and the stronger form of the same claim:
+  9. adb reboot, then repeat step 7-8. A persistable grant is stored by the
+     system, so the verdict must be unchanged after a device restart.
+
+Diagnostic if step 8 fails
+  Watch the log while picking (the native side logs a refused grant):
+       adb logcat -s PrivetSAF
+  'Persistable read grant denied for <uri>' means that provider refused, and
+  that file degrades to the pre-WP-R7 one-shot behaviour — expected and
+  non-fatal, but it must be visible.
+
+  Confirm the grant is actually held:
+       adb shell dumpsys package app.privet.privet_app | grep -A5 -i uri
+  Look for the grantedUriPermissions entry carrying the picked URI.
