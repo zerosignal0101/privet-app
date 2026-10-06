@@ -28,12 +28,20 @@ class SendPreparationPage extends ConsumerStatefulWidget {
     super.key,
     this.initialPeerFingerprint,
     this.initialPeerName,
+    this.initialViaIp,
     this.initialFilePaths,
     this.initialEntries,
   });
 
   final String? initialPeerFingerprint;
   final String? initialPeerName;
+
+  /// Address to send through, pre-filled into the address box. Set when the
+  /// user came from a Known Devices row that is not on the air but was just
+  /// verified at a remembered address: without it the send would have no way to
+  /// resolve the device and would fail even though the row says it is
+  /// reachable.
+  final String? initialViaIp;
 
   /// Pre-filled top-level paths (e.g. resend from history).
   final List<String>? initialFilePaths;
@@ -115,6 +123,13 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
 
     if (widget.initialPeerFingerprint != null && s.peerFingerprint == null) {
       n.setPeer(widget.initialPeerFingerprint!, name: widget.initialPeerName);
+      // Pin the address the caller already verified. Set after the peer (a
+      // peer-less state discards the via on reset) and only when the address is
+      // the one the row actually probed, so the send goes to the device that
+      // answered rather than to whatever the engine resolves on its own.
+      if (widget.initialViaIp != null && widget.initialViaIp!.isNotEmpty) {
+        n.setVia(widget.initialViaIp!);
+      }
     }
   }
 

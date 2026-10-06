@@ -138,9 +138,18 @@ class PrivetIpcClient {
   /// Returns the decoded `data` half of a response payload — a map, a list
   /// (for `peers`/`history`), or `null` for `ack`. Throws [PrivetIpcException]
   /// on a daemon error payload.
-  Future<dynamic> callRaw(String method, [Map<String, dynamic>? params]) async {
+  /// Issues [method] and returns the decoded `data` half.
+  ///
+  /// [timeout] overrides this client's default request timeout for this one
+  /// call. It exists for callers that must be bounded more tightly than a
+  /// user-visible operation — a reachability probe runs inside a refresh, and
+  /// the 30 s default would keep that refresh turning long after the UI has
+  /// given up on the address.
+  Future<dynamic> callRaw(String method,
+      [Map<String, dynamic>? params, Duration? timeoutOverride]) async {
     final conn = _conn;
     if (conn == null) throw PrivetIpcException('closed', 'client is not connected');
+    final deadline = timeoutOverride ?? timeout;
     final requestId = newRequestId();
     final completer = Completer<Map<String, dynamic>>();
     _pending[requestId] = completer;
@@ -149,8 +158,16 @@ class PrivetIpcClient {
       'request_id': requestId,
       'request': {'method': method, 'params': ?params},
     })));
-    final result = await completer.future.timeout(timeout,
-        onTimeout: () => throw PrivetIpcException('timeout', 'request timed out'));
+    final Map<String, dynamic> result;
+    try {
+      result = await completer.future.timeout(deadline);
+    } on TimeoutException {
+      // Drop the entry so a late reply cannot resolve a completer nobody is
+      // waiting on any more, and so the pending map does not grow one entry
+      // per timed-out probe.
+      _pending.remove(requestId);
+      throw PrivetIpcException('timeout', 'request timed out');
+    }
     final payload = result['payload'];
     final error = result['error'];
     if (error != null) {
@@ -183,13 +200,15 @@ class PrivetIpcClient {
   /// a code. [ip] is a bare address (as for [send]'s `via`); [quicPort]/[tcpPort]
   /// are null unless the user typed a port, in which case the daemon uses those
   /// instead of its own.
+  /// [timeout] overrides the default request deadline for this dial; see
+  /// [callRaw].
   Future<ResolvedAddressDto> resolveAddress(String ip,
-          {int? quicPort, int? tcpPort}) async =>
+          {int? quicPort, int? tcpPort, Duration? timeout}) async =>
       ResolvedAddressDto.fromJson((await callRaw('resolve_address', {
         'ip': ip,
         'quic_port': quicPort,
         'tcp_port': tcpPort,
-      })) as Map<String, dynamic>);
+      }, timeout)) as Map<String, dynamic>);
 
   Future<PairingCodeDto> generatePairingCode() async =>
       PairingCodeDto.fromJson((await callRaw('generate_pairing_code')) as Map<String, dynamic>);

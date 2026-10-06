@@ -23,8 +23,13 @@ class PrivetService {
   /// the handshake is what tells the app whether the thing at that address is a
   /// device it already has. Pass [quicPort]/[tcpPort] only when the user typed a
   /// port; otherwise the daemon dials its own.
-  Future<ResolvedAddressDto> resolveAddress(String ip, {int? quicPort, int? tcpPort}) =>
-      _client.resolveAddress(ip, quicPort: quicPort, tcpPort: tcpPort);
+  /// [timeout] bounds this one dial; see `resolveAddress` in the client. Used
+  /// by the reachability probe so a dead address cannot outlast the refresh
+  /// that started it.
+  Future<ResolvedAddressDto> resolveAddress(String ip,
+          {int? quicPort, int? tcpPort, Duration? timeout}) =>
+      _client.resolveAddress(ip,
+          quicPort: quicPort, tcpPort: tcpPort, timeout: timeout);
   Future<PairingCodeDto> generatePairingCode() => _client.generatePairingCode();
   Future<PairingResultDto> pair({
     required String code,

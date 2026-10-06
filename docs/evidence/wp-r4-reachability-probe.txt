@@ -1,0 +1,158 @@
+WP-R4 — A trusted device that is not broadcasting stops being permanently greyed out
+
+Environment (unchanged for every command below):
+  export PATH="/home/zsig/flutter-sdk/bin:$PATH"
+  export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+  export JAVA_TOOL_OPTIONS="-Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=4568 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=4568 -Dhttp.nonProxyHosts=localhost|127.0.0.1|10.*|172.16.*|192.168.*"
+
+Worktree: /home/zsig/Documents/gits/privet-app-wpr1   Branch: wp/app-reachable-probe
+Raw command output for each step:
+  wp-r4-analyze.txt      flutter analyze
+  wp-r4-test.txt         flutter test (full suite)
+  wp-r4-build-apk.txt    flutter build apk --release + sha256sum
+  wp-r4-adb-install.txt  adb install -r + dumpsys package
+
+================================================================================
+1. The defect and the change
+================================================================================
+
+Root cause (as diagnosed): `lib/pages/home_page.dart` judged a Known Devices row
+with a single `online` boolean, taken from `onlinePeerFingerprintsProvider`
+(lib/providers/peers.dart), which only reads `isOnline` off the *discovery*
+peer list. `TrustedPeerDto.addresses` — the address the engine records after a
+successful send — was not part of the judgement at all. So a device that was
+trusted, had a remembered address, and had just received a file stayed greyed
+"Offline" with no Send button, and no amount of refreshing could change it.
+
+Fix, in four states by priority (lib/providers/peers.dart, ReachabilityNotifier):
+
+  1. online      — currently broadcasting (discovery). Unchanged behaviour,
+                   green. No probe is issued for these at all.
+  2. reachable   — not broadcasting, but `resolve_address` on
+                   `addresses.first` answered AND answered with a fingerprint
+                   byte-for-byte equal to the row's own fingerprint.
+                   Copy: "Reachable at <ip>", address shown, Send offered.
+  3. unreachable — probed, and it did not yield *this* device: nobody answered
+                   (`found: false`), the probe failed/timed out, or something
+                   answered under a different identity.
+                   Copy: "No answer at <ip>", address still shown, no Send.
+  4. unknown     — no remembered address to probe, and not broadcasting.
+                   Copy: "Offline".
+
+The fingerprint comparison is the safety property, not a detail. A remembered IP
+can be reassigned by DHCP to a different machine; "something answered at the
+address I remember" must never be rendered as "my friend is there", because that
+renders a Send button that delivers files to a stranger. So a mismatch is
+treated exactly like no answer, and the copy deliberately does not distinguish
+the two cases (naming the stranger would also leak what is at the address).
+
+The row now always shows the remembered address (IPv6 bracketed via
+`isIpv6Literal`), in every state, so "we tried it and nothing answered" is
+actionable — the user can see which address was tried.
+
+Sending: for a reachable-but-not-broadcasting device the Send button hands the
+probed address to the send page as `via` (SendPreparationPage.initialViaIp).
+Without that the send would have no way to resolve the device and would fail
+even though the row says it is reachable. For a broadcasting device `via` stays
+null, so discovery is used as before.
+
+Cost / triggering:
+  - Probing runs only inside `_refresh()` (pull-down and the desktop AppBar
+    button). No timer, no polling, no background work.
+  - Only trusted devices that are not currently broadcasting and do have an
+    address are probed; exactly one address each (`addresses.first`); once per
+    refresh.
+  - Probes run concurrently via `Future.wait`, so N unresponsive devices cost
+    one timeout, not N.
+  - Bounded at kReachabilityProbeTimeout (5 s) per address.
+  - Rows under probe show a spinner and "Checking <ip>…"; because the probes
+    are awaited inside `_refresh`, the pull-down indicator stays up until they
+    finish.
+
+================================================================================
+2. Tests (test/pages/home_page_reachability_test.dart)
+================================================================================
+
+New file, 5 tests. Fixtures are the real captures in
+test/support/resolve_fixtures.dart — `resolveTrustedPayload()` (a Xiaomi phone,
+fingerprint 828312c1…) and `resolveUntrustedPayload()` (a ThinkPad, 89507b08…) —
+and the trusted row's fingerprint is the fixture's own, so "the same identity
+answered" is a fact about the fixture rather than an arbitrary string.
+
+  a. "a trusted device whose remembered address answers as itself is
+      Reachable, offers Send, and sends via that address"
+      Covers requirement 1 (address visible), requirement 2.2 (Reachable) and
+      the `via` wiring. Asserts the daemon received exactly one
+      `resolve_address` for 10.29.218.79, the row reads "Reachable at
+      10.29.218.79", the address is on the row, a Send button exists, and after
+      tapping it `sendPreparationProvider` has peerFingerprint =
+      828312c1… and viaIp = 10.29.218.79 with no viaError.
+
+  b. "an address that answers as a DIFFERENT device is not treated as this
+      device (and offers no Send button)"
+      The anti-misdelivery guard, kept as its own test as required. The address
+      answers as the ThinkPad (89507b08…), which is not the trusted row's
+      fingerprint. Asserts "No answer at 10.29.218.79", that no "Reachable"
+      appears anywhere, that the address is still shown, and that the row has no
+      Send button.
+
+  c. "an address where nobody answers shows no answer and keeps the address
+      visible"
+      `found: false`. Asserts "No answer at 10.29.218.79", the address remains on
+      the row (with a reason for that assertion), and no Send button.
+
+  d. "a device that is broadcasting is never probed"
+      Cost control. The device is in the `list_peers` snapshot, so after a full
+      refresh the scripted daemon must have received *no* `resolve_address` at
+      all (`resolveCalls` is empty). Also asserts it still reads Online and
+      still offers Send.
+
+  e. "a probe that never answers still finishes the refresh and shows a bounded
+      result"
+      Boundedness. The scripted daemon answers `resolve_address` under a
+      different request id, so the request is never replied to. The test pumps
+      past kReachabilityProbeTimeout and asserts the row leaves "Checking",
+      settles on "No answer at 10.29.218.79", keeps the address, offers no
+      Send, and that the refresh indicator is gone.
+
+================================================================================
+3. Supporting change: the probe bound had to move into the IPC request
+================================================================================
+
+The first implementation wrapped the probe in an outer `.timeout()`. That passed
+the UI assertions but left the IPC client's own 30 s request timer pending,
+which flutter_test correctly rejects ("A Timer is still pending even after the
+widget tree was disposed"). That is not only a test artifact: an outer timeout
+means the app moves on while a 30 s timer is still running and a late reply can
+resolve an abandoned completer, so a refresh would still pin a timer for far
+longer than the refresh it belongs to.
+
+So the bound is now passed to the request itself: `callRaw` takes an optional
+per-call timeout override (defaulting to the client-wide 30 s, so every other
+caller is unaffected), `resolveAddress` on the client and on `PrivetService`
+forward it, and the probe passes `kReachabilityProbeTimeout`. On timeout the
+pending entry is removed, so neither the map nor an abandoned completer grows
+per timed-out probe. Net: the client-level bound becomes the real bound.
+
+No third-party dependency was added. `android/`, `tool/` and `pubspec.yaml` were
+not touched; `analysis_options.yaml` and `pubspec.lock`, which the flutter
+commands rewrite, were restored with `git checkout --` before committing.
+
+================================================================================
+4. Results
+================================================================================
+
+flutter analyze                -> No issues found!            (wp-r4-analyze.txt)
+flutter test                   -> 215 passed, 1 failed        (wp-r4-test.txt)
+  The single failure is the pre-existing, out-of-scope one, unchanged by this
+  work and failing before it started:
+    test/services/daemon_supervisor_test.dart:
+      resolvePosixEndpoint mirrors the daemon default (POSIX)
+flutter build apk --release    -> Built app-release.apk (76.2MB) (wp-r4-build-apk.txt)
+  sha256 a55371f9d847ad81b16c43dbdc833f86068033d6fe338d16ddc0c84d6d58bb06
+adb install -r                 -> Success                     (wp-r4-adb-install.txt)
+  versionName=1.0.0
+  lastUpdateTime=2026-10-06 18:18:10
+
+The main checkout /home/zsig/Documents/gits/privet-app was not modified
+(`git diff --quiet` passes there).

@@ -8,6 +8,7 @@ import '../providers/transfers.dart';
 import '../services/ipc/dto.dart';
 import '../services/pairing_url.dart';
 import '../state/daemon_state.dart';
+import '../utils/addr.dart';
 import '../utils/format.dart';
 import '../widgets/local_addresses.dart';
 import '../widgets/pairing_banner.dart';
@@ -29,9 +30,20 @@ class _HomePageState extends ConsumerState<HomePage> {
   /// is invalidated separately — otherwise the refresh button (the only refresh
   /// on desktop, where the pull-down gesture doesn't exist) would leave the
   /// known-device list stale.
+  ///
+  /// It then probes the remembered address of every trusted device that is not
+  /// currently broadcasting, so a device that just received a file but does not
+  /// beacon on this network stops looking permanently dead. The probe runs
+  /// inside this future, which is what keeps the pull-down spinner up until the
+  /// answer is in.
   Future<void> _refresh() async {
     await ref.read(peerListProvider.notifier).refresh();
     ref.invalidate(trustedListProvider);
+    final trusted = await ref.read(trustedListProvider.future);
+    await ref.read(reachabilityProvider.notifier).probeOnRefresh(
+          trusted,
+          ref.read(onlinePeerFingerprintsProvider),
+        );
   }
 
   @override
@@ -56,9 +68,12 @@ class _HomePageState extends ConsumerState<HomePage> {
         .where((p) => p.deviceFingerprint != identityFp)
         .toList();
 
-    // Trusted peers currently broadcasting are online and sendable; the rest of
-    // the (persistent) trust list is offline and must not offer a Send button.
+    // Trusted peers currently broadcasting are online and sendable; a trusted
+    // peer that is not broadcasting is judged by the last refresh's address
+    // probe instead (see ReachabilityNotifier), so a device that is reachable
+    // at a remembered address without beaconing is not greyed out.
     final onlineFps = ref.watch(onlinePeerFingerprintsProvider);
+    final reachability = ref.watch(reachabilityProvider);
 
     final activeList = activeMap.values.toList();
     final awaitingAccept = activeList.where((t) => t.isAwaitingAccept).toList();
@@ -150,12 +165,29 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
               )
             else
-              ...(trusted.value ?? []).map((tp) => _TrustedPeerTile(
-                    peer: tp,
-                    online: onlineFps.contains(tp.deviceFingerprint),
-                    onSend: () => _navigateToSend(
-                        tp.deviceFingerprint, name: tp.deviceName),
-                  )),
+              ...(trusted.value ?? []).map((tp) {
+                final probe =
+                    reachability[tp.deviceFingerprint] ?? unknownReachability;
+                final broadcasting = onlineFps.contains(tp.deviceFingerprint);
+                // Discovery outranks a probe: a beaconing device needs no
+                // address, and the remembered address may well be stale.
+                return _TrustedPeerTile(
+                  peer: tp,
+                  state: broadcasting
+                      ? TrustedReachability.online
+                      : probe.state,
+                  probing: !broadcasting &&
+                      probe.state == TrustedReachability.probing,
+                  // Sending to a device that is not broadcasting only works if
+                  // the address is pinned, so the tile hands the probed
+                  // address to the send page as `via`.
+                  onSend: () => _navigateToSend(
+                    tp.deviceFingerprint,
+                    name: tp.deviceName,
+                    via: broadcasting ? null : probe.address,
+                  ),
+                );
+              }),
 
             // Nearby (discovered) devices
             _sectionTitle(context, 'Nearby Devices'),
@@ -185,13 +217,14 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: Text(title, style: Theme.of(context).textTheme.titleMedium),
       );
 
-  void _navigateToSend(String? fingerprint, {String? name}) {
+  void _navigateToSend(String? fingerprint, {String? name, String? via}) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => SendPreparationPage(
           initialPeerFingerprint: fingerprint,
           initialPeerName: name,
+          initialViaIp: via,
         ),
       ),
     );
@@ -396,36 +429,101 @@ class _PairingQrCodeState extends ConsumerState<_PairingQrCode> {
 // Trusted peer tile
 // ---------------------------------------------------------------------------
 
+/// One row of Known Devices.
+///
+/// A device is not only "on the air or not": once a send has succeeded the
+/// engine remembers the address it used, and that address can still answer long
+/// after the device stopped beaconing. This row therefore shows the address
+/// itself and, after a refresh, what probing it actually proved — so a device
+/// that is reachable at a known address is never stuck greyed out, and one
+/// whose address belongs to somebody else is never mistaken for a friend.
 class _TrustedPeerTile extends StatelessWidget {
   final TrustedPeerDto peer;
+  final TrustedReachability state;
 
-  /// Whether the device is currently broadcasting (discovered online).
-  final bool online;
+  /// True while a probe for this row is in flight; the row says so instead of
+  /// claiming an answer it does not have yet.
+  final bool probing;
+
   final VoidCallback onSend;
 
   const _TrustedPeerTile({
     required this.peer,
+    required this.state,
+    required this.probing,
     required this.onSend,
-    this.online = false,
   });
+
+  /// The remembered address, bracketed if IPv6, or null when none is known.
+  String? get _address {
+    final ip = peer.addresses.isEmpty ? null : peer.addresses.first.ip;
+    if (ip == null || ip.isEmpty) return null;
+    return isIpv6Literal(ip) ? '[$ip]' : ip;
+  }
+
+  /// The status line. Says which address it is about, and — for the rejected
+  /// cases — never claims the device is there.
+  String get _statusText {
+    final address = _address;
+    return switch (state) {
+      TrustedReachability.online => 'Online',
+      TrustedReachability.probing =>
+        address == null ? 'Checking…' : 'Checking $address…',
+      TrustedReachability.reachable => 'Reachable at $address',
+      // Deliberately identical for "nobody answered" and "something else
+      // answered": both mean "not this device", and the copy must not imply
+      // otherwise in the second case.
+      TrustedReachability.unreachable => 'No answer at $address',
+      TrustedReachability.unknown => 'Offline',
+    };
+  }
+
+  Color get _statusColor => switch (state) {
+        TrustedReachability.online => Colors.green.shade700,
+        // Reachable is a real, verified answer — only weaker than a beacon, so
+        // it stays green rather than being greyed out like the failures.
+        TrustedReachability.reachable => Colors.green.shade700,
+        TrustedReachability.probing => Colors.orange,
+        TrustedReachability.unreachable => Colors.grey,
+        TrustedReachability.unknown => Colors.grey,
+      };
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = online ? Colors.green.shade700 : Colors.grey;
+    final address = _address;
+    final sendable = state.canSend;
     return ListTile(
       dense: true,
-      leading: Icon(Icons.verified_user, color: statusColor, size: 20),
+      leading: probing
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2))
+          : Icon(Icons.verified_user, color: _statusColor, size: 20),
       title: Text(peer.deviceName, style: const TextStyle(fontSize: 14)),
-      subtitle: Text(
-        '${shortFingerprint(peer.deviceFingerprint)} · '
-        '${online ? 'Online' : 'Offline'}',
-        style: TextStyle(
-            fontSize: 11,
-            color: online ? Colors.green.shade600 : Colors.grey,
-            fontFamily: 'monospace'),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${shortFingerprint(peer.deviceFingerprint)} · $_statusText',
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+                fontSize: 11, color: _statusColor, fontFamily: 'monospace'),
+          ),
+          // The address is always visible when one is known, whatever the
+          // state: "we tried it and nothing answered" is only actionable if
+          // the user can see which address was tried.
+          if (address != null)
+            Text(address,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 11, color: Colors.grey, fontFamily: 'monospace')),
+        ],
       ),
-      // No Send button for an offline device — sending would only fail.
-      trailing: online
+      // Send is offered for a beaconing or verified-reachable device, and only
+      // then — it is wired to send via the shown address, which is the only
+      // thing that can work for a device that is not on the air.
+      trailing: sendable
           ? IconButton(icon: const Icon(Icons.send, size: 18), onPressed: onSend)
           : null,
     );
