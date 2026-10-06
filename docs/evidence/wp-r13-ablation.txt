@@ -1,0 +1,112 @@
+00:00 +0: loading /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_peer_switch_test.dart
+00:00 +0: switching receiver clears the box and sends no via from A
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: false
+  Actual: <true>
+receiver A's address must never cross the IPC boundary for B
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_peer_switch_test.dart:165:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_peer_switch_test.dart line 165
+The test description was:
+  switching receiver clears the box and sends no via from A
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:00 +0 -1: switching receiver clears the box and sends no via from A [E]
+  Test failed. See exception logs above.
+  The test description was: switching receiver clears the box and sends no via from A
+  
+00:00 +0 -1: switching receiver adopts B's own remembered address, not A's
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: '192.168.5.5'
+  Actual: '10.0.0.1'
+   Which: is different.
+          Expected: 192.168.5.5 ...
+            Actual: 10.0.0.1
+                     ^
+           Differ at offset 1
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_peer_switch_test.dart:192:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_peer_switch_test.dart line 192
+The test description was:
+  switching receiver adopts B's own remembered address, not A's
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:01 +0 -2: switching receiver adopts B's own remembered address, not A's [E]
+  Test failed. See exception logs above.
+  The test description was: switching receiver adopts B's own remembered address, not A's
+  
+00:01 +0 -2: the suggestion chips list the current peer's addresses only
+00:01 +1 -2: an address typed for A never reaches B, and does not come back
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: empty
+  Actual: '172.16.0.9'
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_peer_switch_test.dart:252:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_peer_switch_test.dart line 252
+The test description was:
+  an address typed for A never reaches B, and does not come back
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:01 +1 -3: an address typed for A never reaches B, and does not come back [E]
+  Test failed. See exception logs above.
+  The test description was: an address typed for A never reaches B, and does not come back
+  
+00:01 +1 -3: re-selecting the same receiver keeps a half-typed address
+00:01 +2 -3: the send-by-address entry keeps the address the user typed
+00:01 +3 -3: clearing the receiver clears the address too
+00:01 +3 -4: clearing the receiver clears the address too [E]
+  Expected: null
+    Actual: '172.16.0.9'
+  an address with no receiver is an address for nobody
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test/pages/send_via_peer_switch_test.dart 348:5     main.<fn>
+  
+00:01 +3 -4: a receiver change clears a pending address error as well
+00:01 +3 -5: a receiver change clears a pending address error as well [E]
+  Expected: null
+    Actual: '"not-an-ip" is not a valid IP address.'
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test/pages/send_via_peer_switch_test.dart 371:5     main.<fn>
+  
+00:01 +3 -5: Some tests failed.
+
+Failing tests:
+  /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_peer_switch_test.dart: a receiver change clears a pending address error as well
+  /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_peer_switch_test.dart: an address typed for A never reaches B, and does not come back
+  /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_peer_switch_test.dart: clearing the receiver clears the address too
+  /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_peer_switch_test.dart: switching receiver adopts B's own remembered address, not A's
+  /home/zsig/Documents/gits/privet-app-wpr13/test/pages/send_via_peer_switch_test.dart: switching receiver clears the box and sends no via from A

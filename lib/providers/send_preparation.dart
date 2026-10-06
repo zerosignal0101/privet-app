@@ -218,8 +218,27 @@ class SendPreparationNotifier extends Notifier<SendPreparationState> {
     state = const SendPreparationState();
   }
 
+  /// Selects the recipient, replacing any previous one.
+  ///
+  /// Changing to a **different** receiver drops the pinned address and any
+  /// address error with it: those describe the device the user was previously
+  /// sending to. Keeping them is not a cosmetic slip — the address box's own
+  /// rule is that a `via` already in the state wins over the remembered one
+  /// (the user typed it on purpose, for a device met again on another network),
+  /// so a surviving `viaIp` would be read as "the address the user chose for
+  /// this device" when it was chosen for a different one. The box would then
+  /// show the old address and [send] would hand it to the daemon: peer A's
+  /// bytes addressed to peer A while the UI reads peer B.
+  ///
+  /// Re-selecting the *same* receiver is not a change, and must not destroy a
+  /// half-typed address the user is in the middle of entering.
   void setPeer(String fingerprint, {String? name}) {
-    state = state.copyWith(peerFingerprint: fingerprint, peerName: name);
+    final receiverChanged = state.peerFingerprint != fingerprint;
+    state = state.copyWith(
+      peerFingerprint: fingerprint,
+      peerName: name,
+      clearVia: receiverChanged,
+    );
   }
 
   /// Applies the address the user typed to the send-to-address box.
@@ -240,8 +259,13 @@ class SendPreparationNotifier extends Notifier<SendPreparationState> {
     }
   }
 
+  /// Drops the recipient, along with the address that belonged to it.
+  ///
+  /// A pinned address with no receiver is an address for nobody: it would sit
+  /// in the state as an override for whatever receiver is picked next, which is
+  /// the same cross-receiver leak [setPeer] guards against.
   void clearPeer() {
-    state = state.copyWith(clearPeer: true);
+    state = state.copyWith(clearPeer: true, clearVia: true);
   }
 
   void setSending(bool sending) => state = state.copyWith(sending: sending);

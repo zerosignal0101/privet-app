@@ -199,6 +199,19 @@ class _SendPreparationPageState extends ConsumerState<SendPreparationPage> {
         // engine needs a trust record to send through, and an untrusted peer
         // has to pair first.
         if (!needsPairing && state.peerFingerprint != null)
+          // The key is what makes the box *belong* to a receiver: changing
+          // recipients remounts the section, which throws away its
+          // `_prefilled` latch and its text controller so the new receiver
+          // re-seeds from its own state — B's newest remembered address, or an
+          // empty box. Without it the latch would still say "already seeded"
+          // and the box would keep rendering the previous receiver's text.
+          //
+          // It is the widget half of the invariant only. It cannot be the fix
+          // on its own, because a remount re-seeds *from the state*: before
+          // `setPeer` started clearing `viaIp`, the fresh widget faithfully
+          // re-displayed the stale address. The clearing in the provider is
+          // what makes the state honest; the key makes the widget follow it
+          // instead of caching a copy that outlives the receiver.
           _ViaAddressSection(
             key: ValueKey('via-${state.peerFingerprint}'),
             remembered: selectedPeer?.addresses ?? const [],
@@ -891,6 +904,13 @@ class _ViaAddressSectionState extends State<_ViaAddressSection> {
   ///    is that the remembered address is wrong (a device met again on another
   ///    network). Letting the prefill overwrite it would silently send to the old
   ///    address, which is the failure this box is here to avoid.
+  ///
+  ///    This branch is safe only because `viaIp` is now scoped to the selected
+  ///    receiver: `setPeer` clears it when the receiver changes, and this widget
+  ///    is remounted per receiver, so a value read here always belongs to the
+  ///    device currently shown. The rule below decides *which of the selected
+  ///    device's two addresses* wins — it is not responsible for working out
+  ///    whose address `viaIp` is.
   ///  * otherwise the device's newest remembered address.
   ///
   /// The provider write is deferred to a post-frame callback on purpose:
