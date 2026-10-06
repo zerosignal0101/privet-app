@@ -1,0 +1,40 @@
+00:00 +0: loading /home/zsig/Documents/gits/privet-app-wpr12/test/pages/history_partial_resume_test.dart
+00:00 +0: partial send Resume resumes a partial send whose staging copy was cleaned up, using the original reference rather than the dead path
+00:00 +1: partial send Resume makes NO request when a file cannot be resolved, and names it with a specific reason
+00:00 +2: partial send Resume is all-or-nothing: one unresolvable file blocks the whole resume, so a subset is never sent
+00:00 +3: partial send Resume resumes every file of a multi-file send when all resolve
+00:00 +4: directory-rooted send Resume resumes with the RECORDED paths and no override when the staged tree is intact, so nested paths are preserved
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: false
+  Actual: <true>
+the recorded paths are all present, so no override may be built: a flat per-file override would be
+refused by the engine and the send could never resume
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure>.<anonymous closure> (file:///home/zsig/Documents/gits/privet-app-wpr12/test/pages/history_partial_resume_test.dart:277:7)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///home/zsig/Documents/gits/privet-app-wpr12/test/pages/history_partial_resume_test.dart line 277
+The test description was:
+  resumes with the RECORDED paths and no override when the staged tree is intact, so nested paths
+  are preserved
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:01 +4 -1: directory-rooted send Resume resumes with the RECORDED paths and no override when the staged tree is intact, so nested paths are preserved [E]
+  Test failed. See exception logs above.
+  The test description was: resumes with the RECORDED paths and no override when the staged tree is intact, so nested paths are preserved
+  
+00:01 +4 -1: directory-rooted send Resume makes NO request when the staged tree was deleted, naming every unresolvable file
+00:01 +5 -1: staging copies are adopted by the same transfer id the fresh copies are registered for cleanup under the resumed id
+00:01 +6 -1: staging copies are adopted by the same transfer id registration accumulates and dedupes per transfer id
+00:01 +7 -1: Some tests failed.
+
+Failing tests:
+  /home/zsig/Documents/gits/privet-app-wpr12/test/pages/history_partial_resume_test.dart: directory-rooted send Resume resumes with the RECORDED paths and no override when the staged tree is intact, so nested paths are preserved

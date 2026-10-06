@@ -96,6 +96,21 @@ void main() {
   /// A staging copy that `send_cache.dart` already deleted.
   String dead(String name) => '${tempRoot.path}/privet/send-cache/1/$name';
 
+  /// An intact staged tree, as a folder pick produces. Returns the rows the
+  /// engine recorded for a send rooted at this directory: the *nested*
+  /// relative paths `prepare_dir` walks, each with its own absolute path.
+  List<(String, String?)> liveTree(String rootName) {
+    Directory('${tempRoot.path}/$rootName/sub').createSync(recursive: true);
+    final a = '${tempRoot.path}/$rootName/sub/a.txt';
+    File(a).writeAsBytesSync(List<int>.filled(4096, 3));
+    final b = '${tempRoot.path}/$rootName/b.txt';
+    File(b).writeAsBytesSync(List<int>.filled(4096, 4));
+    return [
+      ('sub/a.txt', a),
+      ('b.txt', b),
+    ];
+  }
+
   /// Boots a one-record partial history page and taps Resend, returning every
   /// request the app issued (so a correct refusal shows up as an empty list).
   Future<List<Map<String, dynamic>>> tapResume(
@@ -227,6 +242,66 @@ void main() {
       expect(paths, containsAll(<String>[a, b]),
           reason: 'every file of the set must be covered');
       expect(paths, hasLength(2));
+    });
+  });
+
+  // WP-R14: a send rooted at a DIRECTORY must still resume. See
+  // `directory-rooted send Resume` below; these two are the same scenarios
+  // from the other side.
+  group('directory-rooted send Resume', () {
+    testWidgets('resumes with the RECORDED paths and no override when the '
+        'staged tree is intact, so nested paths are preserved',
+        (tester) async {
+      // A folder pick: the engine walked the tree, so the intent records
+      // `sub/a.txt` and `b.txt`, and the tree itself is still on disk.
+      final files = liveTree('intact-tree');
+      expect(files.first.$1, 'sub/a.txt',
+          reason: 'precondition: a directory send records NESTED relative '
+              'paths, which is what makes the flat override wrong');
+
+      final resumes = await tapResume(tester, id: 't-dir-intact', files: files);
+
+      expect(resumes, hasLength(1),
+          reason: 'an intact directory-rooted send MUST be resumable');
+
+      final params = resumes.single;
+      expect(params['transfer_id'], 't-dir-intact');
+
+      // The regression: WP-R12 resolved every file through the stager and sent
+      // the resolved PER-FILE paths as the override. `prepare_paths` treats
+      // each of those as a single file and derives `relative_path = file_name`,
+      // so the set becomes flat (`a.txt`, `b.txt`) and
+      // `check_override_matches_intent` refuses, naming the missing
+      // `sub/a.txt`. The fast path must therefore carry NO override at all, so
+      // the engine re-reads the recorded paths and reproduces the nesting.
+      expect(params.containsKey('paths'), isFalse,
+          reason: 'the recorded paths are all present, so no override may be '
+              'built: a flat per-file override would be refused by the engine '
+              'and the send could never resume');
+      expect(params['paths'], isNull,
+          reason: 'no source override means the daemon uses the recorded paths');
+    });
+
+    testWidgets('makes NO request when the staged tree was deleted, naming '
+        'every unresolvable file', (tester) async {
+      // Android-shaped failure: the picked folder was staged as a tree and the
+      // send cache deleted it wholesale, so every recorded path is gone.
+      final files = <(String, String?)>[
+        ('sub/a.txt', dead('tree/sub/a.txt')),
+        ('b.txt', dead('tree/b.txt')),
+      ];
+
+      final resumes = await tapResume(tester, id: 't-dir-gone', files: files);
+
+      // A resume covers the whole recorded file set or nothing is sent.
+      expect(resumes, isEmpty,
+          reason: 'a partial send whose sources are all gone cannot be '
+              'resumed; the request must not be made');
+      expect(find.textContaining('Cannot resume'), findsOneWidget);
+      expect(find.textContaining('sub/a.txt'), findsWidgets,
+          reason: 'the refusal must name the file, not just say "failed"');
+      expect(find.textContaining('b.txt'), findsWidgets);
+      expect(find.textContaining('Nothing was sent'), findsOneWidget);
     });
   });
 

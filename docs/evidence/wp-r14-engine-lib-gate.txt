@@ -1,0 +1,86 @@
+warning: use of deprecated associated function `prost::DecodeError::new`: This function was meant for internal use only. Because of `doc(hidden)` it was publicly available and it is actually used by users. The prost project intents to remove this function in the next breaking release.
+  --> privet-discovery/src/beacon.rs:32:63
+   |
+32 |         return Err(DiscoveryError::Decode(prost::DecodeError::new(
+   |                                                               ^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated associated function `prost::DecodeError::new`: This function was meant for internal use only. Because of `doc(hidden)` it was publicly available and it is actually used by users. The prost project intents to remove this function in the next breaking release.
+  --> privet-discovery/src/beacon.rs:53:63
+   |
+53 |         return Err(DiscoveryError::Decode(prost::DecodeError::new(
+   |                                                               ^^^
+
+warning: use of deprecated associated function `prost::DecodeError::new`: This function was meant for internal use only. Because of `doc(hidden)` it was publicly available and it is actually used by users. The prost project intents to remove this function in the next breaking release.
+  --> privet-discovery/src/beacon.rs:74:63
+   |
+74 |         return Err(DiscoveryError::Decode(prost::DecodeError::new(
+   |                                                               ^^^
+
+warning: `privet-discovery` (lib) generated 3 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/lib.rs (target/debug/deps/privet_core-453ff3fb53eb69ea)
+
+running 31 tests
+test auth::tests::plan_key_mismatch_fail_closed ... ok
+test adapters::transfer_sink::tests::progress_bridges ... ok
+test auth::tests::plan_unknown_triggers_pairing ... ok
+test adapters::pairing_sink::tests::pairing_result_bridges_to_engine_event ... ok
+test adapters::transfer_sink::tests::paused_bridges_with_reason ... ok
+test auth::tests::plan_trusted_codeless ... ok
+test discovery::tests::drain_peer_events_named_populates_name ... ok
+test ops::resume_override_tests::changed_size_is_refused_and_named ... ok
+test pairing::tests::pairing_channel_roundtrip_and_into_inner ... ok
+test reconnect::tests::backoff_schedule_is_spec ... ok
+test ops::resume_override_tests::override_with_nothing_recorded_is_refused ... ok
+test ops::resume_override_tests::matching_override_is_accepted ... ok
+test ops::resume_override_tests::mismatched_root_name_is_refused_and_named ... ok
+test discovery::tests::local_device_info_has_fp_prefix_and_ports ... ok
+test discovery::tests::fp_prefix_map_matches_trusted_spki ... ok
+test reconnect::tests::reconnect_event_carries_attempt_and_backoff ... ok
+test ops::resume_override_tests::missing_recorded_file_is_refused_and_named ... ok
+test runtime::tests::apply_key_rejects_invalid_values ... ok
+test runtime::tests::flag_false_keeps_base_autoaccept ... ok
+test runtime::tests::apply_key_sets_runtime_values ... ok
+test runtime::tests::flag_true_overrides_base_to_autoaccept ... ok
+test reconnect::tests::backoff_iter_yields_then_exhausts ... ok
+test reconnect::tests::backoff_custom_schedule_exhausts_at_custom_len ... ok
+test peers::tests::one_concurrent_transfer_per_peer ... ok
+test ops::resume_override_tests::unknown_file_is_refused_and_named ... ok
+test peers::tests::different_peers_independent ... ok
+test adapters::transfer_sink::tests::offered_emit_logs_transfer_offered ... ok
+test adapters::trust_store::tests::revoke_then_state_revoked ... ok
+test adapters::trust_store::tests::commit_then_get_trusted ... ok
+test adapters::transfer_sink::tests::history_start_then_complete ... ok
+test adapters::trust_store::tests::proof_store_roundtrip ... ok
+
+test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/privetd_embed-1ba134bc4d08338c)
+
+running 10 tests
+test backend::tests::history_detail_dto_maps_send_source_path ... ok
+test backend::tests::history_detail_dto_maps_receive_landed_path ... ok
+test backend::tests::local_addr_dtos_is_empty_when_only_the_wildcard_exists ... ok
+test backend::tests::history_detail_dto_receive_without_root_uses_save_dir_only ... ok
+test backend::tests::local_addr_dtos_keeps_ipv4_only_and_puts_routable_v4_first ... ok
+test backend::tests::via_takes_a_bare_ip_and_rejects_a_port_or_junk ... ok
+test config::tests::partial_json_uses_safe_defaults ... ok
+test events::tests::replay_is_ordered_and_exclusive_of_cursor ... ok
+test tests::runtime_config_changes_persist_to_config_file ... ok
+test tests::run_blocking_serves_ipc_and_stops_on_shutdown ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.52s
+
+     Running unittests src/lib.rs (target/debug/deps/privet_ipc-24575af6f94bd3cc)
+
+running 5 tests
+test protocol::tests::get_history_detail_round_trip_is_stable ... ok
+test protocol::tests::history_detail_dto_round_trip_is_stable ... ok
+test protocol::tests::request_round_trip_is_stable ... ok
+test codec::tests::oversized_frame_is_rejected_before_allocation ... ok
+test codec::tests::framed_message_survives_partial_duplex_io ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

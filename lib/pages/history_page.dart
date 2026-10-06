@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
@@ -10,6 +12,7 @@ import '../services/android/original_ref_store.dart';
 import '../services/android/resend_staging.dart';
 import '../services/file_availability.dart';
 import '../services/ipc/dto.dart';
+import '../services/privet_service.dart';
 import '../state/daemon_state.dart';
 import '../widgets/file_tree_view.dart';
 import 'send_preparation_page.dart';
@@ -319,24 +322,36 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
     );
   }
 
-  /// Resumes a partial send in place, supplying fresh sources for it.
+  /// Resumes a partial send in place.
   ///
   /// A resume reuses the SAME transfer id, so the receiver keeps the chunks it
   /// has already verified — that is the whole point of resuming rather than
-  /// resending. But the daemon rebuilds its file list from the source paths it
-  /// recorded, and for an Android send those paths are the staging copy that
-  /// `send_cache.dart` deletes when the transfer reaches a terminal state
-  /// (cancellation included). Resuming from them fails as a bare `io` error that
-  /// names neither the file nor the cause.
+  /// resending.
   ///
-  /// So the same `ResendStager` the finished-transfer resend already uses
-  /// resolves every file from its *original reference* — the `content://`
-  /// document the user picked, or a real path — and those fresh paths go out as
-  /// the resume's source override.
+  /// The daemon rebuilds its file list from the source paths it recorded. Two
+  /// things can make those paths unusable, and only one of them needs work:
   ///
-  /// All or nothing: a resume covers the whole recorded file set, and the engine
-  /// refuses one that does not, so if any file cannot be resolved this makes NO
-  /// request at all and explains each one, rather than resuming a subset.
+  /// - **A send rooted at a DIRECTORY** (the app supports it: a folder pick
+  ///   caches a tree and the engine recurses it in `prepare_paths`) recorded
+  ///   NESTED relative paths — `sub/a.txt`, `b.txt`. Resolving each of those
+  ///   through [ResendStager] and sending the results as an override is
+  ///   actively wrong: an override is a list of individual paths, so
+  ///   `prepare_paths` derives `relative_path = file_name` for each and the
+  ///   set comes back flat — `a.txt`, `b.txt` — which
+  ///   `check_override_matches_intent` then refuses. When every recorded path
+  ///   is still there the fix is to build NO override at all: the engine re-reads
+  ///   the recorded paths and reproduces exactly the nesting, and nothing is
+  ///   re-staged.
+  /// - **A send whose sources are gone.** For an Android file pick every source
+  ///   is a staging copy that `send_cache.dart` deletes when the transfer
+  ///   reaches a terminal state (cancellation included), while the history row
+  ///   keeps pointing at it. Resuming from those paths fails as a bare `io`
+  ///   error that names neither the file nor the cause, so the sources are
+  ///   re-resolved from their *original reference* — the `content://` document
+  ///   the user picked, or a real path — and sent as the override.
+  ///
+  /// Both branches keep the same invariant: a resume covers the whole recorded
+  /// file set or nothing is sent at all.
   Future<void> _resumePartial(BuildContext context, WidgetRef ref) async {
     final record = widget.record;
     final service = ref.read(daemonStateProvider).service;
@@ -354,9 +369,22 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
             ))
         .toList();
 
-    // The recorded absolute paths are normally the vanished staging copies, so
-    // resolve from the original reference instead of checking whether the dead
-    // path still exists.
+    // Prefer the recorded paths when they are all still there: no override is
+    // built, so the engine reads the intent itself and the file set — including
+    // any nesting from a directory-rooted send — is reproduced exactly.
+    //
+    // `typeSync` and not `File(p).existsSync()`, because a send can be rooted at
+    // a directory and `File(p).existsSync()` is false for one. That mistake is
+    // what made this branch miss directory-rooted sends in the first place.
+    if (!context.mounted) return;
+    if (_allRecordedPathsPresent(sources)) {
+      await _issueResume(context, service, record.transferId, paths: null);
+      return;
+    }
+
+    // Some recorded path is gone. Fall back to resolving every file from its
+    // original reference with the same `ResendStager` the finished-transfer
+    // resend already uses.
     final stager = ResendStager();
     final candidates = await stager.plan(sources);
     if (!context.mounted) return;
@@ -391,8 +419,42 @@ class _HistoryRecordTileState extends ConsumerState<_HistoryRecordTile> {
         .trackTempPathsFor(record.transferId, paths);
     if (!context.mounted) return;
 
+    await _issueResume(context, service, record.transferId, paths: paths);
+  }
+
+  /// Whether every recorded source is still on disk.
+  ///
+  /// All-or-nothing on purpose: a partial answer is not usable, because a
+  /// resume that overrides only some of the files would describe a different
+  /// file set than the receiver already holds. When this is false the caller
+  /// falls back to re-resolving the whole set through [ResendStager].
+  ///
+  /// A recorded path that is null or empty counts as gone: there is nothing to
+  /// hand the engine.
+  bool _allRecordedPathsPresent(List<ResendSource> sources) =>
+      sources.isNotEmpty &&
+      sources.every((s) {
+        final p = s.absolutePath;
+        if (p == null || p.isEmpty) return false;
+        try {
+          return FileSystemEntity.typeSync(p) != FileSystemEntityType.notFound;
+        } catch (_) {
+          // A path that cannot even be stat'd (permissions, a broken mount) is
+          // not a path we can promise the daemon will read. Let the stager try.
+          return false;
+        }
+      });
+
+  /// Issues the resume itself, with [paths] as the source override or null for
+  /// "use the recorded paths", and reports a failure rather than throwing.
+  Future<void> _issueResume(
+    BuildContext context,
+    PrivetService service,
+    String transferId, {
+    required List<String>? paths,
+  }) async {
     try {
-      await service.resumeTransfer(record.transferId, paths: paths);
+      await service.resumeTransfer(transferId, paths: paths);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

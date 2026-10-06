@@ -1,0 +1,33 @@
+warning: use of deprecated associated function `prost::DecodeError::new`: This function was meant for internal use only. Because of `doc(hidden)` it was publicly available and it is actually used by users. The prost project intents to remove this function in the next breaking release.
+  --> privet-discovery/src/beacon.rs:32:63
+   |
+32 |         return Err(DiscoveryError::Decode(prost::DecodeError::new(
+   |                                                               ^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated associated function `prost::DecodeError::new`: This function was meant for internal use only. Because of `doc(hidden)` it was publicly available and it is actually used by users. The prost project intents to remove this function in the next breaking release.
+  --> privet-discovery/src/beacon.rs:53:63
+   |
+53 |         return Err(DiscoveryError::Decode(prost::DecodeError::new(
+   |                                                               ^^^
+
+warning: use of deprecated associated function `prost::DecodeError::new`: This function was meant for internal use only. Because of `doc(hidden)` it was publicly available and it is actually used by users. The prost project intents to remove this function in the next breaking release.
+  --> privet-discovery/src/beacon.rs:74:63
+   |
+74 |         return Err(DiscoveryError::Decode(prost::DecodeError::new(
+   |                                                               ^^^
+
+warning: `privet-discovery` (lib) generated 3 warnings
+   Compiling privet-core v0.1.0 (/home/zsig/Documents/gits/privet/privet-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.39s
+     Running tests/resume_override.rs (target/debug/deps/resume_override-da601d190cc0a3d6)
+
+running 4 tests
+test nested_directory_send_refuses_a_flat_per_file_override ... ok
+test resume_with_override_completes_same_transfer_from_fresh_source ... ok
+test resume_without_override_after_source_gone_fails_with_bare_io ... ok
+test structurally_mismatching_override_is_refused_and_changes_nothing ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.92s
+
