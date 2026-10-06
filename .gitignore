@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Cross-compiled privetd, staged by tool/build_privetd.sh. Build outputs, not
+# sources: run that script (PRIVET_REPO=<privet checkout>) before an Android
+# build. Committing these put ~46 MB of per-ABI ELFs in the repo and its history.
+assets/bin/
+android/app/src/main/jniLibs/

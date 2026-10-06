@@ -71,9 +71,6 @@ flutter:
   # Android: cross-compiled privetd ELF per ABI, extracted and spawned in the
   # app sandbox by AndroidDaemonBundle (see tool/build_privetd.sh).
   assets:
-    - assets/bin/arm64-v8a/privetd
-    - assets/bin/armeabi-v7a/privetd
-    - assets/bin/x86_64/privetd
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

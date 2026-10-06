@@ -16,7 +16,12 @@ set -euo pipefail
 #   - rustup targets: aarch64-linux-android, armv7-linux-androideabi,
 #     x86_64-linux-android
 
-PRIVET_REPO="${PRIVET_REPO:-D:/C-Codes/privet}"
+# The daemon checkout to cross-compile. Defaults to the sibling repo, so a
+# normal `../privet` + `../privet-app` layout works with no environment set;
+# the binaries are no longer committed, so this step is required before an
+# Android build.
+APP_ROOT_FOR_DEFAULT="$(cd "$(dirname "$0")/.." && pwd)"
+PRIVET_REPO="${PRIVET_REPO:-$(cd "$APP_ROOT_FOR_DEFAULT/../privet" && pwd)}"
 APP_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$APP_ROOT/android/app/src/main/jniLibs"
 ABI="${ABI:-arm64-v8a armeabi-v7a x86_64}"
